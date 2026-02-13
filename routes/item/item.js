@@ -1,0 +1,477 @@
+const config = require('../../configuration/connection');
+const pgConn = require('../../library/pgConnection');
+const moment = require('moment');
+const xglobal = require('../../middleware/global');
+
+const dbPrefix = config.dbPrefix();
+
+//example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
+exports.getItemInformation = async (req, res, next) => {
+
+    var xresult = [{
+        itm_code: "",
+        itm_desc: "",
+        itm_short_desc: "",
+        itm_type_code: "",
+        itm_type_desc: "",
+        itm_unit_code: "",
+        itm_unit_desc: "",
+        itm_icon: "",
+        itm_image: "",
+        itm_material_number: "",
+        itm_flag: "",
+        itm_weight_litr_per_kg: 0.0,
+        ist_dt: "",
+        mdf_dt: "",
+        rm_dt: ""
+    }];
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { itm_code, itm_material_number, search, page_index, page_limit, action } = req.body[0];
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (itm_code == undefined || itm_material_number == undefined || lic_code == undefined
+            || search == undefined || page_index == undefined || page_limit == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                page_total: 0,
+                rows_total: 0
+            }]
+
+            res.status(200).send(response);
+        } else {
+            let script = ``;
+            if (page_index > 0) {
+                page_index -= 1;
+            }
+
+            page_limit = 10000;
+
+            if (itm_code.toString().toUpperCase() != 'ALL') {
+                script = `select tbl_item.itm_code,
+                tbl_item.itm_desc,
+                tbl_item.itm_short_desc,
+                tbl_item.itm_type_code,
+                tbl_item_type.itm_type_desc,
+                tbl_item.itm_unit_code,
+                tbl_item_unit.itm_unit_desc,
+                tbl_item.itm_icon,
+                tbl_item.itm_image,
+                tbl_item.itm_material_number,
+                tbl_item.itm_flag,
+                tbl_item.itm_weight_litr_per_kg,
+                tbl_item.ist_dt,
+                tbl_item.mdf_dt,
+                tbl_item.rm_dt 
+                from tbl_item
+                left join tbl_item_unit on tbl_item.itm_unit_code = tbl_item_unit.itm_unit_code
+                left join tbl_item_type on tbl_item.itm_type_code = tbl_item_type.itm_type_code 
+                where tbl_item.itm_flag = '1' and tbl_item.itm_code = '${itm_code}'`;
+            }
+            else {
+                script = `select tbl_item.itm_code,
+                tbl_item.itm_desc,
+                tbl_item.itm_short_desc,
+                tbl_item.itm_type_code,
+                tbl_item_type.itm_type_desc,
+                tbl_item.itm_unit_code,
+                tbl_item_unit.itm_unit_desc,
+                tbl_item.itm_icon,
+                tbl_item.itm_image,
+                tbl_item.itm_material_number,
+                tbl_item.itm_flag,
+                tbl_item.itm_weight_litr_per_kg,
+                tbl_item.ist_dt,
+                tbl_item.mdf_dt,
+                tbl_item.rm_dt 
+                from tbl_item
+                left join tbl_item_unit on tbl_item.itm_unit_code = tbl_item_unit.itm_unit_code
+                left join tbl_item_type on tbl_item.itm_type_code = tbl_item_type.itm_type_code 
+                where tbl_item.itm_flag = '1'`;
+            }
+
+            if (itm_material_number.toString().toUpperCase() != 'ALL' && itm_material_number.toString().toUpperCase() != '') {
+                script += ` and tbl_item.itm_material_number = '${itm_material_number}'`
+            }
+
+            if (search != '') {
+                script += ` and (tbl_item.itm_material_number like '%${search}%' 
+                or tbl_item.itm_desc like '%${search}%' 
+                or tbl_item.itm_short_desc like '%${search}%' 
+                or tbl_item_type.itm_type_desc like '%${search}%' 
+                or tbl_item_unit.itm_unit_desc like '%${search}%')`
+            }
+
+            script += ` order by tbl_item.itm_desc asc `
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
+
+            let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary.code) {
+                //debugger
+                if (tbl_temporary.data.length > 0) {
+                    tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+
+                    let page_total = 0;
+                    let rows_total = 0;
+                    script = ``
+                    if (itm_code.toString().toUpperCase() != 'ALL') {
+                        script = `select ceil((ceil(count(itm_code)) / ${page_limit})) as page_total, (count(itm_code)) as rows_total 
+                        from tbl_item
+                        left join tbl_item_unit on tbl_item.itm_unit_code = tbl_item_unit.itm_unit_code
+                        left join tbl_item_type on tbl_item.itm_type_code = tbl_item_type.itm_type_code 
+                        where tbl_item.itm_flag = '1'`;
+                    }
+                    else {
+                        script = `select ceil((ceil(count(itm_code)) / ${page_limit})) as page_total, (count(itm_code)) as rows_total 
+                        from tbl_item
+                        left join tbl_item_unit on tbl_item.itm_unit_code = tbl_item_unit.itm_unit_code
+                        left join tbl_item_type on tbl_item.itm_type_code = tbl_item_type.itm_type_code 
+                        where tbl_item.itm_flag = '1'`;
+                    }
+
+                    if (itm_material_number.toString().toUpperCase() != 'ALL' && itm_material_number.toString().toUpperCase() != '') {
+                        script += ` and tbl_item.itm_material_number = '${itm_material_number}'`
+                    }
+
+                    if (search != '') {
+                        script += ` and (tbl_item.itm_material_number like '%${search}%' 
+                        or tbl_item.itm_desc like '%${search}%' 
+                        or tbl_item.itm_short_desc like '%${search}%' 
+                        or tbl_item_type.itm_type_desc like '%${search}%' 
+                        or tbl_item_unit.itm_unit_desc like '%${search}%')`
+                    }
+
+                    let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+                    if (!tbl_temporary0.code) {
+                        if (tbl_temporary0.data.length > 0) {
+                            page_total = parseInt(tbl_temporary0.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary0.data[0].rows_total);
+                        }
+                    }
+
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: tbl_temporary.data,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                        page_total: (page_total <= 0 ? 1 : page_total),
+                        rows_total: rows_total
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                } else {
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: xresult,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                        page_total: 0,
+                        rows_total: 0
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                }
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: xresult,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                    page_total: 0,
+                    rows_total: 0
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: xresult,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+            page_total: 0,
+            rows_total: 0
+        }]
+        res.status(200).send(response);
+        await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+}
+
+exports.removeItem = async (req, res, next) => {
+
+    return (async () => {
+
+        let lic_code = req.header('lic_code');
+        let { itm_code, action } = req.body[0];
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (itm_code == undefined || lic_code == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+        } else {
+
+            let script = ``;
+            script = `update tbl_item set itm_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+            where itm_code = '${itm_code}';`
+
+            let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary.code) {
+                //debugger
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: '',
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+
+                res.status(200).send(response);
+                return;
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+        await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+
+}
+
+exports.setItemInformation = async (req, res, next) => {
+
+    return (async () => {
+        debugger
+        let lic_code = req.header('lic_code');
+        let { itm_code } = req.query;
+        let {
+            itm_desc,
+            itm_short_desc,
+            itm_type_code,
+            itm_unit_code,
+            itm_icon,
+            itm_image,
+            itm_material_number,
+            itm_weight_litr_per_kg,
+            action
+        } = req.body[0];
+
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (itm_code == undefined || itm_desc == undefined || itm_short_desc == undefined
+            || itm_type_code == undefined || itm_unit_code == undefined || itm_icon == undefined || itm_image == undefined || itm_material_number == undefined
+            || itm_weight_litr_per_kg == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+        } else {
+
+            let script = ``;
+            script = `update tbl_item set
+            itm_desc = '${itm_desc}',
+            itm_short_desc = '${itm_short_desc}',
+            itm_type_code = '${itm_type_code}',
+            itm_unit_code = '${itm_unit_code}',
+            itm_icon = '${itm_icon}',
+            itm_image = '${itm_image}',
+            itm_material_number = '${itm_material_number}',
+            itm_weight_litr_per_kg = ${itm_weight_litr_per_kg},
+            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+            where itm_code = '${itm_code}';`
+
+            script = script.replace(/'NULL'/gi, "NULL")
+            let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary.code) {
+                //debugger
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: '',
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลสินค้า', JSON.stringify(req.body[0]), 'success', action[0].value);
+                return;
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+
+    })().catch(async (err) => {
+
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+        await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+
+}
+
+exports.addItemInformation = async (req, res, next) => {
+
+    return (async () => {
+        debugger
+        let lic_code = req.header('lic_code');
+        let {
+            itm_desc,
+            itm_short_desc,
+            itm_type_code,
+            itm_unit_code,
+            itm_icon,
+            itm_image,
+            itm_material_number,
+            itm_weight_litr_per_kg,
+            action
+        } = req.body[0];
+
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (itm_desc == undefined || itm_short_desc == undefined
+            || itm_type_code == undefined || itm_unit_code == undefined || itm_icon == undefined || itm_image == undefined || itm_material_number == undefined
+            || itm_weight_litr_per_kg == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+        } else {
+
+            let script = ``;
+            script = `select itm_code from tbl_item where (itm_desc = '${itm_desc}' or itm_short_desc = '${itm_short_desc}' or itm_material_number = '${itm_material_number}') and itm_flag = '1';`
+            let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary0.code) {
+                if (tbl_temporary0.data.length > 0) {
+                    let response = [{
+                        status: 'error',
+                        invalid_code: '-4',
+                        message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลสินค้าซ้ำ`,
+                        data: [],
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }]
+
+                    res.status(200).send(response);
+                    await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูลได้, เนื่องจากข้อมูลสินค้าซ้ำ', action[0].value);
+                    return;
+                }
+            }
+
+            let itm_code = 'itm-' + moment().format('x');
+            script = `insert into tbl_item 
+            (itm_code, itm_desc, itm_short_desc, itm_type_code, itm_unit_code, itm_icon, itm_image, 
+            itm_material_number, itm_weight_litr_per_kg, itm_flag, ist_dt) 
+            values 
+            ('${itm_code}', '${itm_desc}', '${itm_short_desc}', '${itm_type_code}', '${itm_unit_code}', '${itm_icon}', 
+            '${itm_image}', '${itm_material_number}', ${itm_weight_litr_per_kg}, '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`
+
+            script = script.replace(/'NULL'/gi, "NULL")
+            let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary.code) {
+                //debugger
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: '',
+                    data: [{
+                        itm_code: itm_code
+                    }],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลสินค้า', JSON.stringify(req.body[0]), 'success', action[0].value);
+                return;
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+        await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลสินค้า', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+
+}
