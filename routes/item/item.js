@@ -29,6 +29,8 @@ exports.getItemInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { itm_code, itm_material_number, search, page_index, page_limit, action } = req.body[0];
+        // console.log(itm_code);
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_code == undefined || itm_material_number == undefined || lic_code == undefined
             || search == undefined || page_index == undefined || page_limit == undefined || action == undefined) {

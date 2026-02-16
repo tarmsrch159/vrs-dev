@@ -239,7 +239,7 @@ exports.getVehicleForManageOrder = async (req, res, next) => {
       script += ` order by tbl_master.veh_number asc`
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -415,7 +415,7 @@ exports.getVehicleOfGroupForManageOrder = async (req, res, next) => {
       script += ` order by tbl_master.veh_number asc`
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -574,7 +574,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
         where tbl_item.itm_material_number in ('400018281','400019360','400003050','400003060','400003045'))`;
 
         let tbl_order_checked = await pgConn.get(
-          "tmsv2_" + lic_code,
+          dbPrefix + lic_code,
           script,
           config.connectionString(),
         );
@@ -600,7 +600,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
         and tbl_order.veh_code is not null and tbl_order.veh_code != '${veh_code}'`;
 
         let tbl_order_checked = await pgConn.get(
-          "tmsv2_" + lic_code,
+          dbPrefix + lic_code,
           script,
           config.connectionString(),
         );
@@ -649,7 +649,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
         where tbl_order.ord_code in (${ord_code.map((number) => `'${number}'`).toString()}) 
         and tbl_petrol_vehicle.veh_code is not null and tbl_petrol_vehicle.ptrl_vehicle_flag = '1'`;
 
-        let tbl_truck_checked = await pgConn.get("tmsv2_" + lic_code, script, config.connectionString());
+        let tbl_truck_checked = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
         if (!tbl_truck_checked.code) {
           if (tbl_truck_checked.data.length > 0) {
             //checked ว่ารถที่เลือกอยู่ในลิสไหม
@@ -691,7 +691,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
         where tbl_petrol_vehicle_type.ptrl_vehicle_type_flag = '1' and ord_code in (${ord_code.map((number) => `'${number}'`).toString()}) `;
 
         let tbl_vehicle_type = await pgConn.get(
-          "tmsv2_" + lic_code,
+          dbPrefix + lic_code,
           script,
           config.connectionString(),
         );
@@ -742,7 +742,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
         tbl_item.itm_type_code, tbl_item_type.itm_type_desc, tbl_item_type.itm_type_veh_support;`;
 
         let tbl_checked = await pgConn.get(
-          "tmsv2_" + lic_code,
+          dbPrefix + lic_code,
           script,
           config.connectionString(),
         );
@@ -756,7 +756,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
         where veh_code = '${veh_code}';`;
 
         let tbl_vehicle = await pgConn.get(
-          "tmsv2_" + lic_code,
+          dbPrefix + lic_code,
           script,
           config.connectionString(),
         );
@@ -910,7 +910,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
 
       script = script.replace(/'NULL'/gi, "NULL");
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -949,7 +949,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
           from tbl_job`;
 
           let tbl_temporaryx0 = await pgConn.get(
-            "tmsv2_" + lic_code,
+            dbPrefix + lic_code,
             script,
             config.connectionString(),
           );
@@ -969,7 +969,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
              ('${job_ord_code}','${job_code}','${tbl_temporary.data[xjob].ord_code}', '${ist_dt}');`;
 
               let tbl_temporary0 = await pgConn.execute(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString(),
               );
@@ -986,7 +986,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                 where ord_code = '${tbl_temporary.data[xjob].ord_code.toString()}';`;
 
                 let tbl_temporary00 = await pgConn.execute(
-                  "tmsv2_" + lic_code,
+                  dbPrefix + lic_code,
                   script,
                   config.connectionString(),
                 );
@@ -1087,7 +1087,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                   transit_end_dt >= '${selectedDate} 00:00:00' and transit_end_dt <= '${selectedDate} 23:59:59' order by transit_end_dt asc`;
 
                   let tbl_temporary001 = await pgConn.get(
-                    "tmsv2_" + lic_code,
+                    dbPrefix + lic_code,
                     script,
                     config.connectionString(),
                   );
@@ -1107,7 +1107,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                 ${item_quantity}, ${distance}, '${transit_start_dt}', '${transit_end_dt}', ${transit_minute}, '${ist_dt}');`;
 
                 let tbl_temporary000 = await pgConn.execute(
-                  "tmsv2_" + lic_code,
+                  dbPrefix + lic_code,
                   script,
                   config.connectionString(),
                 );
@@ -1118,7 +1118,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                   script = `update tbl_job set pkg_code = (select dpo_code from tbl_order_depot 
                   where ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}')
                   order by loading_start_dt asc limit 1) where job_code = '${job_code}'`
-                  await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+                  await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
 
                   //select route for update datetime for heremap
                   try {
@@ -1177,7 +1177,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                     order by location_type_code,location_req asc `;
 
                     let tbl_route = await pgConn.get(
-                      "tmsv2_" + lic_code,
+                      dbPrefix + lic_code,
                       script,
                       config.connectionString(),
                     );
@@ -1214,7 +1214,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                 and tbl_order_depot.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
                                 let tbl_temporary001 = await pgConn.execute(
-                                  "tmsv2_" + lic_code,
+                                  dbPrefix + lic_code,
                                   script,
                                   config.connectionString(),
                                 );
@@ -1268,7 +1268,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                     and tbl_order_depot.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
                                     let tbl_temporary001 = await pgConn.execute(
-                                      "tmsv2_" + lic_code,
+                                      dbPrefix + lic_code,
                                       script,
                                       config.connectionString(),
                                     );
@@ -1299,7 +1299,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                     and tbl_order_petrol.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
                                     let tbl_temporary001 = await pgConn.execute(
-                                      "tmsv2_" + lic_code,
+                                      dbPrefix + lic_code,
                                       script,
                                       config.connectionString(),
                                     );
@@ -1328,7 +1328,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                   distance = ${xdistance} where job_code = '${job_code}'`;
 
                                   let tbl_temporary001 = await pgConn.execute(
-                                    "tmsv2_" + lic_code,
+                                    dbPrefix + lic_code,
                                     script,
                                     config.connectionString(),
                                   );
@@ -1342,7 +1342,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                     from tbl_job where tbl_job.job_flag = '1' and tbl_job.job_code = '${job_code}'`;
 
                                     let tbl_temporaryJob = await pgConn.execute(
-                                      "tmsv2_" + lic_code,
+                                      dbPrefix + lic_code,
                                       script,
                                       config.connectionString(),
                                     );
@@ -1376,7 +1376,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                       order by t1.item_quantity desc`;
 
                                       const orderItem = await pgConn.get(
-                                        "tmsv2_" + lic_code,
+                                        dbPrefix + lic_code,
                                         scriptOrd,
                                         config.connectionString(),
                                       );
@@ -1402,7 +1402,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
 
                                       order by t1.veh_compartment_number asc`;
                                       const vehTank = await pgConn.get(
-                                        "tmsv2_" + lic_code,
+                                        dbPrefix + lic_code,
                                         scriptVeh,
                                         config.connectionString(),
                                       );
@@ -1446,7 +1446,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                         "NULL",
                                       );
                                       let tbl_temporary = await pgConn.execute(
-                                        "tmsv2_" + lic_code,
+                                        dbPrefix + lic_code,
                                         script,
                                         config.connectionString(),
                                       );
@@ -1457,7 +1457,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
 
                                         let tbl_temporary0x =
                                           await pgConn.execute(
-                                            "tmsv2_" + lic_code,
+                                            dbPrefix + lic_code,
                                             script,
                                             config.connectionString(),
                                           );
@@ -1473,7 +1473,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                               ${orderItemRaw[xxi].item_quantity}, '1','${moment().format("YYYY-MM-DD HH:mm:ss")}', NULL, NULL, '${orderItemRaw[xxi].veh_compartment_code}', '${orderItemRaw[xxi].ptrl_tank_code}');`;
 
                                               debugger;
-                                              let tbl_temporary01x = await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+                                              let tbl_temporary01x = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
                                             }
                                             else {
 
@@ -1485,7 +1485,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                                 xindex += 1;
 
                                                 debugger;
-                                                let tbl_temporary01x = await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+                                                let tbl_temporary01x = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
                                               }
                                               else {
                                                 xindex = 0;
@@ -1496,7 +1496,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                                 xindex += 1;
 
                                                 debugger;
-                                                let tbl_temporary01x = await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+                                                let tbl_temporary01x = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
                                               }
                                             }
 
@@ -1546,7 +1546,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                           );
                                           let tbl_temporary =
                                             await pgConn.execute(
-                                              "tmsv2_" + lic_code,
+                                              dbPrefix + lic_code,
                                               script,
                                               config.connectionString(),
                                             );
@@ -1610,7 +1610,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
 
                                     script = `  select count(job_code) as dver_code from tbl_job where job_code = '${job_code}' and dver_code is null `;
                                     let tbl_temporarycheck = await pgConn.get(
-                                      "tmsv2_" + lic_code,
+                                      dbPrefix + lic_code,
                                       script,
                                       config.connectionString(),
                                     );
@@ -1679,7 +1679,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
                                         "NULL",
                                       );
                                       let tbl_temporary = await pgConn.execute(
-                                        "tmsv2_" + lic_code,
+                                        dbPrefix + lic_code,
                                         script,
                                         config.connectionString(),
                                       );
@@ -1957,7 +1957,7 @@ exports.getJobInformationforVehicle = async (req, res, next) => {
       script += ` order by tbl_job.tms_transport_code asc `;
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -2103,7 +2103,7 @@ exports.getOrderInJobInformationEdit = async (req, res, next) => {
             where job_code = '${job_code}' and tbl_order.ord_flag = '1'`;
 
       let dataresult = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script1,
         config.connectionString(),
       );
@@ -2165,7 +2165,7 @@ exports.getOrderInJobInformationEdit = async (req, res, next) => {
       script += ` order by tbl_order_item.ord_item_code asc `;
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -2336,7 +2336,7 @@ exports.getCompartmentJobForEdit = async (req, res, next) => {
       tnk_capacity, tnk_target, tnk_deadstock, book_stock, average_daily_sales, tnk_fixed`;
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -2563,7 +2563,7 @@ exports.getCompartmentJobForEditWithOrderinTruck = async (req, res, next) => {
       order by unloading_start_dt asc`;
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -2668,7 +2668,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
 
       script = script.replace(/'NULL'/gi, "NULL");
       let tbl_temporary = await pgConn.execute(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -2683,7 +2683,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
       (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
       let tbl_temporary_depot = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -2703,7 +2703,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
 
           script = script.replace(/'NULL'/gi, "NULL");
           let tbl_temporary = await pgConn.execute(
-            "tmsv2_" + lic_code,
+            dbPrefix + lic_code,
             script,
             config.connectionString(),
           );
@@ -2719,7 +2719,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
               where ord_code = '${fitem[xx].ord_code}'`;
 
             let tbl_temporary323 = await pgConn.execute(
-              "tmsv2_" + lic_code,
+              dbPrefix + lic_code,
               script,
               config.connectionString(),
             );
@@ -2730,7 +2730,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
           debugger;
           script = `delete from tbl_order_compartment where ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}')`
           let tbl_temporary002 = await pgConn.execute(
-            "tmsv2_" + lic_code,
+            dbPrefix + lic_code,
             script,
             config.connectionString(),
           );
@@ -2751,7 +2751,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
                 script = script.replace(/'NULL'/gi, "NULL");
                 debugger
                 let tbl_temporary2 = await pgConn.execute(
-                  "tmsv2_" + lic_code,
+                  dbPrefix + lic_code,
                   script,
                   config.connectionString(),
                 );
@@ -2775,7 +2775,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
               where ord_code = '${xorder[xor1]}'`;
 
               let tbl_temporary3 = await pgConn.execute(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString(),
               );
@@ -2786,7 +2786,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
                 where tbl_order.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}')`;
 
                 let tbl_temporary4 = await pgConn.execute(
-                  "tmsv2_" + lic_code,
+                  dbPrefix + lic_code,
                   script,
                   config.connectionString(),
                 );
@@ -2954,7 +2954,7 @@ exports.getDataWorkSheetJobCode = async (req, res, next) => {
       from tbl_job where tbl_job.job_flag = '1' and tbl_job.job_code = '${job_code}'`;
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString(),
       );
@@ -3059,7 +3059,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
           script = `update tbl_job set pkg_code = (select dpo_code from tbl_order_depot 
           where ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}')
           order by loading_start_dt asc limit 1) where job_code = '${job_code}'`
-          await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+          await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
         }
 
         //get location code from vehicle type
@@ -3067,7 +3067,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
         case when tbl_vehicle_type.loading_minute is null then 0 else tbl_vehicle_type.loading_minute end as loading_minute from tbl_vehicle_type 
         left join tbl_vehicle on tbl_vehicle_type.veh_type_code = tbl_vehicle.veh_type_code
         where tbl_vehicle.veh_code in (select veh_code from tbl_job where job_code = '${job_code}')`;
-        let tbl_veh_minute = await pgConn.get("tmsv2_" + lic_code, script, config.connectionString());
+        let tbl_veh_minute = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
 
         var veh_unloading_minute = 0;
         var veh_loading_minute = 0;
@@ -3132,7 +3132,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
         location_minute, location_distance, location_req
         order by location_type_code,location_req asc `;
 
-        let tbl_route = await pgConn.get("tmsv2_" + lic_code, script, config.connectionString());
+        let tbl_route = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
         debugger;
         if (!tbl_route.code) {
           if (tbl_route.data.length > 0) {
@@ -3168,7 +3168,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
                     and tbl_order_depot.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
                     let tbl_temporary001 = await pgConn.execute(
-                      "tmsv2_" + lic_code,
+                      dbPrefix + lic_code,
                       script,
                       config.connectionString(),
                     );
@@ -3218,7 +3218,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
                         where tbl_order_depot.dpo_code = '${tbl_route.data[xlocation].location_code}'
                         and tbl_order_depot.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
-                        let tbl_temporary001 = await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+                        let tbl_temporary001 = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
 
                         if (pkg_code == '') {
                           pkg_code = tbl_route.data[xlocation].location_code;
@@ -3247,7 +3247,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
                         and tbl_order_petrol.ord_code in (select ord_code from tbl_job_order where job_code = '${job_code}');`;
 
                         let tbl_temporary001 = await pgConn.execute(
-                          "tmsv2_" + lic_code,
+                          dbPrefix + lic_code,
                           script,
                           config.connectionString(),
                         );
@@ -3275,7 +3275,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
                       transit_start_dt = '${moment(xtransit_master_dt).format("YYYY-MM-DD HH:mm:ss")}',transit_end_dt = '${moment(transit_end_dt).format("YYYY-MM-DD HH:mm:ss")}',
                       transit_minute = ${xtime}, distance = ${xdistance} where job_code = '${job_code}'`;
 
-                      let tbl_temporary001 = await pgConn.execute("tmsv2_" + lic_code, script, config.connectionString());
+                      let tbl_temporary001 = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
 
                       if (!tbl_temporary001.code) {
                         let response = [{

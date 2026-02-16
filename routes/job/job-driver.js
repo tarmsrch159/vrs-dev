@@ -117,7 +117,7 @@ exports.getDriverOfJobInformation = async (req, res, next) => {
       }
 
       let tbl_temporary = await pgConn.get(
-        "tmsv2_" + lic_code,
+        dbPrefix + lic_code,
         script,
         config.connectionString()
       );

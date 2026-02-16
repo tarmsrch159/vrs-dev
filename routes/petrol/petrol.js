@@ -32,7 +32,9 @@ exports.getPetrolInformation = async (req, res, next) => {
         ptrl_remark: "",
         ist_dt: "",
         mdf_dt: "",
-        rm_dt: ""
+        rm_dt: "",
+        ptrl_sales_group: "",
+        ptrl_sales_type: ""
     }];
 
     return (async () => {
@@ -64,7 +66,7 @@ exports.getPetrolInformation = async (req, res, next) => {
                 script = `select ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_city, ptrl_country_code,
                 ptrl_unloading_minute, ptrl_expenses_per_km, ptrl_area, ptrl_option_pump, ptrl_option_mrge_orders, ptrl_lat, ptrl_lon,
                 tbl_petrol.off_code, off_desc, tbl_petrol.ptrl_group_code, ptrl_group_desc, tbl_petrol.ist_dt, tbl_petrol.mdf_dt, tbl_petrol.rm_dt, 
-                ptrl_flag, ptrl_remark  
+                ptrl_flag, ptrl_remark, ptrl_sales_group, ptrl_sales_type
                 from tbl_petrol 
                 left join tbl_office on tbl_petrol.off_code = tbl_office.off_code 
                 left join tbl_petrol_group on tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
@@ -74,7 +76,7 @@ exports.getPetrolInformation = async (req, res, next) => {
                 script = `select ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_city, ptrl_country_code,
                 ptrl_unloading_minute, ptrl_expenses_per_km, ptrl_area, ptrl_option_pump, ptrl_option_mrge_orders, ptrl_lat, ptrl_lon,
                 tbl_petrol.off_code, off_desc, tbl_petrol.ptrl_group_code, ptrl_group_desc, tbl_petrol.ist_dt, tbl_petrol.mdf_dt, tbl_petrol.rm_dt, 
-                ptrl_flag, ptrl_remark  
+                ptrl_flag, ptrl_remark, ptrl_sales_group, ptrl_sales_type  
                 from tbl_petrol 
                 left join tbl_office on tbl_petrol.off_code = tbl_office.off_code 
                 left join tbl_petrol_group on tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
@@ -299,7 +301,9 @@ exports.setPetrolInformation = async (req, res, next) => {
             off_code,
             ptrl_group_code,
             ptrl_remark,
-            action
+            action,
+            ptrl_sales_group,
+            ptrl_sales_type
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
@@ -307,7 +311,7 @@ exports.setPetrolInformation = async (req, res, next) => {
             || ptrl_short_desc == undefined || ptrl_address == undefined || ptrl_zip_code == undefined || ptrl_country_code == undefined || ptrl_unloading_minute == undefined
             || ptrl_expenses_per_km == undefined || ptrl_area == undefined || ptrl_option_pump == undefined || ptrl_option_mrge_orders == undefined
             || ptrl_lat == undefined || ptrl_lon == undefined || off_code == undefined || ptrl_group_code == undefined
-            || action == undefined) {
+            || ptrl_sales_group == undefined || ptrl_sales_type == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -342,7 +346,9 @@ exports.setPetrolInformation = async (req, res, next) => {
             off_code = '${off_code}',
             ptrl_group_code = '${ptrl_group_code}',
             mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}',
-            ptrl_remark = '${ptrl_remark}' 
+            ptrl_remark = '${ptrl_remark}',
+            ptrl_sales_group = '${ptrl_sales_group}',
+            ptrl_sales_type = '${ptrl_sales_type}'
             where ptrl_code = '${ptrl_code}';`
 
             script = script.replace(/'NULL'/gi, "NULL")
@@ -414,7 +420,9 @@ exports.addPetrolInformation = async (req, res, next) => {
             off_code,
             ptrl_group_code,
             ptrl_remark,
-            action
+            action,
+            ptrl_sales_group,
+            ptrl_sales_type
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
@@ -422,7 +430,7 @@ exports.addPetrolInformation = async (req, res, next) => {
             || ptrl_short_desc == undefined || ptrl_address == undefined || ptrl_zip_code == undefined || ptrl_country_code == undefined || ptrl_unloading_minute == undefined
             || ptrl_expenses_per_km == undefined || ptrl_area == undefined || ptrl_option_pump == undefined || ptrl_option_mrge_orders == undefined
             || ptrl_lat == undefined || ptrl_lon == undefined || off_code == undefined || ptrl_group_code == undefined
-            || action == undefined) {
+            || action == undefined || ptrl_sales_group == undefined || ptrl_sales_type == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -461,12 +469,12 @@ exports.addPetrolInformation = async (req, res, next) => {
             script = `insert into tbl_petrol 
             (ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_city, ptrl_country_code, ptrl_unloading_minute,
             ptrl_expenses_per_km, ptrl_area, ptrl_option_pump, ptrl_option_mrge_orders,
-            ptrl_lat, ptrl_lon, off_code, ptrl_group_code, ptrl_flag, ist_dt, ptrl_remark) 
+            ptrl_lat, ptrl_lon, off_code, ptrl_group_code, ptrl_flag, ist_dt, ptrl_remark, ptrl_sales_group, ptrl_sales_type) 
             values 
             ('${ptrl_code}', '${ptrl_number}', '${ptrl_desc}', '${ptrl_short_desc}', '${ptrl_address}', '${ptrl_zip_code}', '${ptrl_city}', 
             '${ptrl_country_code}', ${ptrl_unloading_minute}, ${ptrl_expenses_per_km}, 
             ${ptrl_area}, '${ptrl_option_pump}', '${ptrl_option_mrge_orders}', ${ptrl_lat}, ${ptrl_lon}, '${off_code}', '${ptrl_group_code}',
-            '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${ptrl_remark}');`
+            '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${ptrl_remark}', '${ptrl_sales_group}', '${ptrl_sales_type}');`
 
             script = script.replace(/'NULL'/gi, "NULL")
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());

@@ -31,8 +31,9 @@ var app = express();
 var cors = require('cors');
 var config = require('./configuration/connection');
 const prod = true;
-const paths = '/Users/phairatsaemua/Desktop/dev/TMS/aos/back-end/files/';
+const paths = path.join(__dirname, 'files');
 const paths_prod = '/root/tms-fuel/back-end/gateway/files/';
+
 // gzip/deflate outgoing responses
 var compression = require('compression');
 app.use(compression());
@@ -94,17 +95,30 @@ app.post('/api-tms-v2/upload/temporary', upload.single('fileupload'), async (req
 
         res.send(response);
     }
-})
+});
+
+app.get('/helloword', async (req, res) => {
+    let response = {
+        status: 'success',
+        invalid_code: '0',
+        message: 'Hello World',
+        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+    }
+
+    res.send(response);
+});
 
 app.use(async (req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
-
-    let xauth = await this.xAuthorization(req, res);
-    if (!xauth) {
+    if (req.url.toString().indexOf('/helloword') != -1) {
         return;
-    }
-    else {
-        next();
+    } else {
+        let xauth = await this.xAuthorization(req, res);
+        if (!xauth) {
+            return;
+        } else {
+            next();
+        }
     }
 });
 

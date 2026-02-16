@@ -4151,7 +4151,7 @@ exports.postCloseDischargedJob2TmpWithXml = async (lic_code, job_code, xdata) =>
 
 }
 
-exports.postSyncVMIOrder = async (lic_code) => {
+exports.postSyncVMIOrder_BK = async (lic_code) => {
 
     try {
 

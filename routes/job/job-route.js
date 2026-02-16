@@ -51,7 +51,7 @@ exports.getRouteOfJobInformation = async (req, res, next) => {
             case when tbl_vehicle_type.loading_minute is null then 0 else tbl_vehicle_type.loading_minute end as loading_minute from tbl_vehicle_type 
             left join tbl_vehicle on tbl_vehicle_type.veh_type_code = tbl_vehicle.veh_type_code
             where tbl_vehicle.veh_code in (select veh_code from tbl_job where job_code = '${job_code}')`;
-            let tbl_veh_minute = await pgConn.get("tmsv2_" + lic_code, script, config.connectionString());
+            let tbl_veh_minute = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
 
             var veh_unloading_minute = 0;
             var veh_loading_minute = 0;

@@ -3,6 +3,8 @@ const pgConn = require("../../library/pgConnection");
 const moment = require("moment");
 const xglobal = require("../../middleware/global");
 
+const dbPrefix = config.dbPrefix();
+
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 //Success
 exports.getPetrolDepotInformation = async (req, res, next) => {
@@ -124,7 +126,7 @@ exports.getPetrolDepotInformation = async (req, res, next) => {
             script += `  order by dpo_short_desc asc;`;
 
             let tbl_temporary = await pgConn.get(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString()
             );
@@ -237,7 +239,7 @@ exports.removePetrolDepot = async (req, res, next) => {
             )}' where ptrl_depot_code = '${ptrl_depot_code}';`;
 
             let tbl_temporary = await pgConn.execute(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString()
             );
@@ -351,7 +353,7 @@ exports.setPetrolDepotInformation = async (req, res, next) => {
             where ptrl_depot_code = '${ptrl_depot_code}';`;
 
             let tbl_temporary = await pgConn.execute(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString()
             );
@@ -459,7 +461,7 @@ exports.addPetrolDepotInformation = async (req, res, next) => {
 
             script = `select ptrl_depot_code from tbl_petrol_depot where ptrl_depot_flag = '1' and ptrl_code = '${ptrl_code}' and dpo_code = '${dpo_code}';`;
             let tbl_temporary0 = await pgConn.get(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString()
             );
@@ -496,7 +498,7 @@ exports.addPetrolDepotInformation = async (req, res, next) => {
             )}', '${ptrl_depot_status}');`;
 
             let tbl_temporary = await pgConn.execute(
-                "tmsv2_" + lic_code,
+                dbPrefix + lic_code,
                 script,
                 config.connectionString()
             );

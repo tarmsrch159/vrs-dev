@@ -30,6 +30,11 @@ router.delete('/item/information', petrol_item.removePetrolItem);
 router.patch('/item/information', petrol_item.setPetrolItemInformation);
 router.put('/item/information', petrol_item.addPetrolItemInformation);
 
+//Merge petrol item
+router.post('/item/merge', petrol_item.getMergePetrolItem);
+router.put('/item/merge', petrol_item.mergePetrolItem);
+router.delete('/item/merge', petrol_item.mergePetrolItem);
+
 //Petrol expenses
 router.post('/expenses/information', petrol_expenses.getPetrolExpensesInformation);
 router.delete('/expenses/information', petrol_expenses.removePetrolExpenses);

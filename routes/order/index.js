@@ -28,9 +28,10 @@ router.post('/tmp-status/accept/information', order.setAceptOrderTMPStatusInform
 router.post('/tmp-status/decline/information', order.setDeclineOrderTMPStatusInformation);
 
 //sync order
-router.post('/sync/non-vmi/information', order_sync_non_vmi.getOrderNonVMIInformation);
-router.post('/sync/non-vmi/information-with-number', order_sync_non_vmi.getOrderNonVMIInformationWithNumber);
-router.post('/sync/vmi/information', order_sync_vmi.getOrderVMIInformation);
+// router.post('/sync/non-vmi/information', order_sync_non_vmi.getOrderNonVMIInformation);
+// router.post('/sync/non-vmi/information-with-number', order_sync_non_vmi.getOrderNonVMIInformationWithNumber);
+// router.post('/sync/vmi/information', order_sync_vmi.getOrderVMIInformation);
+
 //confirm
 router.post('/confirm/information', order.setConfirmedOrderInformation);
 router.post('/cancel/information', order.setCanceldOrderInformation);
