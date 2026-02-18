@@ -73,12 +73,17 @@ exports.getPetrolItemInformation = async (req, res, next) => {
                     tbi.itm_desc,
                     tbi.itm_short_desc,
                     tbi.itm_type_code,
+                    tit.itm_type_desc,
                     tbi.itm_unit_code,
+                    tui.itm_unit_desc,
                     tbi.itm_icon,
                     tbi.itm_image,
-                    tbi.itm_material_number
+                    tbi.itm_material_number,
+                    tbpi.itm_merge
                 FROM tbl_petrol_item tbpi
                 LEFT JOIN tbl_item tbi on tbpi.itm_code = tbi.itm_code
+                LEFT JOIN tbl_item_type tit on tbi.itm_type_code = tit.itm_type_code 
+                LEFT JOIN tbl_item_unit tui on tbi.itm_unit_code = tui.itm_unit_code 
                 WHERE tbpi.ptrl_item_flag = '1' ${wh}
             `;
             let pageLimit = `order by tbi.itm_desc asc limit ${limit} offset ${offset}`;

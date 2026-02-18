@@ -49,28 +49,29 @@ exports.getPetrolWorkedDateInformation = async (req, res, next) => {
             let script = ``;
             if (wrk_date_code.toString().toUpperCase() != 'ALL') {
                 script = `select
-                ptrl_worked_date_code,
-                tbl_petrol.ptrl_code,
-                ptrl_number,
-                ptrl_desc,
-                ptrl_short_desc,
-                tbl_petrol.ptrl_group_code,
-                ptrl_group_desc,
-                tbl_petrol_worked_date.wrk_date_code,
-                case when wrk_date_code = '0' then 'SUN'
-                when wrk_date_code = '1' then 'MON'
-                when wrk_date_code = '2' then 'TUE'
-                when wrk_date_code = '3' then 'WED'
-                when wrk_date_code = '4' then 'THU'
-                when wrk_date_code = '5' then 'FRI'
-                else 'SAT' end as wrk_date_desc,
-                ptrl_open_time,
-                ptrl_close_time,
-                tbl_petrol.off_code,
-                off_desc,
-                tbl_petrol_worked_date.ist_dt,
-                tbl_petrol_worked_date.mdf_dt,
-                tbl_petrol_worked_date.rm_dt 
+                    ptrl_worked_date_code,
+                    tbl_petrol.ptrl_code,
+                    ptrl_number,
+                    ptrl_desc,
+                    ptrl_short_desc,
+                    tbl_petrol.ptrl_group_code,
+                    ptrl_group_desc,
+                    tbl_petrol_worked_date.wrk_date_code,
+                    case when wrk_date_code = '0' then 'SUN'
+                    when wrk_date_code = '1' then 'MON'
+                    when wrk_date_code = '2' then 'TUE'
+                    when wrk_date_code = '3' then 'WED'
+                    when wrk_date_code = '4' then 'THU'
+                    when wrk_date_code = '5' then 'FRI'
+                    else 'SAT' end as wrk_date_desc,
+                    ptrl_open_time,
+                    ptrl_close_time,
+                    tbl_petrol.off_code,
+                    off_desc,
+                    tbl_petrol_worked_date.ist_dt,
+                    tbl_petrol_worked_date.mdf_dt,
+                    tbl_petrol_worked_date.rm_dt,
+                    tbl_petrol_worked_date.wrk_seq 
                 from tbl_petrol
                 left join tbl_office on tbl_petrol.off_code = tbl_office.off_code
                 left join tbl_petrol_worked_date on tbl_petrol.ptrl_code = tbl_petrol_worked_date.ptrl_code 
@@ -80,28 +81,29 @@ exports.getPetrolWorkedDateInformation = async (req, res, next) => {
             }
             else {
                 script = `select
-                ptrl_worked_date_code,
-                tbl_petrol.ptrl_code,
-                ptrl_number,
-                ptrl_desc,
-                ptrl_short_desc,
-                tbl_petrol.ptrl_group_code,
-                ptrl_group_desc,
-                tbl_petrol_worked_date.wrk_date_code,
-                case when wrk_date_code = '0' then 'SUN'
-                when wrk_date_code = '1' then 'MON'
-                when wrk_date_code = '2' then 'TUE'
-                when wrk_date_code = '3' then 'WED'
-                when wrk_date_code = '4' then 'THU'
-                when wrk_date_code = '5' then 'FRI'
-                else 'SAT' end as wrk_date_desc,
-                ptrl_open_time,
-                ptrl_close_time,
-                tbl_petrol.off_code,
-                off_desc,
-                tbl_petrol_worked_date.ist_dt,
-                tbl_petrol_worked_date.mdf_dt,
-                tbl_petrol_worked_date.rm_dt 
+                    ptrl_worked_date_code,
+                    tbl_petrol.ptrl_code,
+                    ptrl_number,
+                    ptrl_desc,
+                    ptrl_short_desc,
+                    tbl_petrol.ptrl_group_code,
+                    ptrl_group_desc,
+                    tbl_petrol_worked_date.wrk_date_code,
+                    case when wrk_date_code = '0' then 'SUN'
+                    when wrk_date_code = '1' then 'MON'
+                    when wrk_date_code = '2' then 'TUE'
+                    when wrk_date_code = '3' then 'WED'
+                    when wrk_date_code = '4' then 'THU'
+                    when wrk_date_code = '5' then 'FRI'
+                    else 'SAT' end as wrk_date_desc,
+                    ptrl_open_time,
+                    ptrl_close_time,
+                    tbl_petrol.off_code,
+                    off_desc,
+                    tbl_petrol_worked_date.ist_dt,
+                    tbl_petrol_worked_date.mdf_dt,
+                    tbl_petrol_worked_date.rm_dt,
+                    tbl_petrol_worked_date.wrk_seq
                 from tbl_petrol
                 left join tbl_office on tbl_petrol.off_code = tbl_office.off_code
                 left join tbl_petrol_worked_date on tbl_petrol.ptrl_code = tbl_petrol_worked_date.ptrl_code 
@@ -114,7 +116,7 @@ exports.getPetrolWorkedDateInformation = async (req, res, next) => {
                 script += ` and tbl_petrol.ptrl_code = '${ptrl_code}' `
             }
 
-            script += `  order by tbl_petrol_worked_date.wrk_date_code asc;`
+            script += `  order by tbl_petrol_worked_date.wrk_date_code, tbl_petrol_worked_date.wrk_seq asc;`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

@@ -40,18 +40,20 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
 
             let script = ``;
             if (veh_type_code.toString().toUpperCase() != 'ALL') {
-                script = `select veh_type_code, veh_type_desc, veh_type_flag, 
-                tbl_vehicle_type.ist_dt, tbl_vehicle_type.mdf_dt, tbl_vehicle_type.rm_dt,
-                case when unloading_minute is null then 0 else unloading_minute end as unloading_minute,
-                case when loading_minute is null then 0 else loading_minute end as loading_minute 
+                script = `select veh_type_code, veh_type_desc, veh_type_flag, veh_qty,
+                    veh_unavailable, (veh_qty - veh_unavailable) as veh_available,
+                    tbl_vehicle_type.ist_dt, tbl_vehicle_type.mdf_dt, tbl_vehicle_type.rm_dt,
+                    case when unloading_minute is null then 0 else unloading_minute end as unloading_minute,
+                    case when loading_minute is null then 0 else loading_minute end as loading_minute 
                 from tbl_vehicle_type 
                 where veh_type_flag = '1' and veh_type_code = '${veh_type_code}'`;
             }
             else {
-                script = `select veh_type_code, veh_type_desc, veh_type_flag, 
-                tbl_vehicle_type.ist_dt, tbl_vehicle_type.mdf_dt, tbl_vehicle_type.rm_dt,
-                case when unloading_minute is null then 0 else unloading_minute end as unloading_minute,
-                case when loading_minute is null then 0 else loading_minute end as loading_minute 
+                script = `select veh_type_code, veh_type_desc, veh_type_flag, veh_qty, 
+                    veh_unavailable, (veh_qty - veh_unavailable) as veh_available,
+                    tbl_vehicle_type.ist_dt, tbl_vehicle_type.mdf_dt, tbl_vehicle_type.rm_dt,
+                    case when unloading_minute is null then 0 else unloading_minute end as unloading_minute,
+                    case when loading_minute is null then 0 else loading_minute end as loading_minute 
                 from tbl_vehicle_type 
                 where veh_type_flag = '1' `;
             }
@@ -192,6 +194,8 @@ exports.setVehicleTypeInformation = async (req, res, next) => {
         let { veh_type_code } = req.query;
         let {
             veh_type_desc,
+            veh_qty,
+            veh_unavailable,
             unloading_minute,
             loading_minute,
             action
@@ -214,6 +218,8 @@ exports.setVehicleTypeInformation = async (req, res, next) => {
             let script = ``;
             script = `update tbl_vehicle_type set
             veh_type_desc = '${veh_type_desc}',
+            veh_qty = ${veh_qty == undefined ? 1 : veh_qty},
+            veh_unavailable = ${veh_unavailable == undefined ? 0 : veh_unavailable},
             unloading_minute = ${unloading_minute},
             loading_minute = ${loading_minute}, 
             mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
@@ -270,6 +276,8 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let {
             veh_type_desc,
+            veh_qty,
+            veh_unavailable,
             unloading_minute,
             loading_minute,
             action
@@ -309,10 +317,12 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
                 }
             }
 
+            const vehQty = veh_qty == undefined ? 1 : veh_qty;
+            const vehUnavailable = veh_unavailable == undefined ? 0 : veh_unavailable;
             let veh_type_code = 'veht-' + moment().format('x');
             script = `insert into tbl_vehicle_type 
-            (veh_type_code, veh_type_desc, unloading_minute, loading_minute, veh_type_flag, ist_dt) values 
-            ('${veh_type_code}', '${veh_type_desc}', ${unloading_minute}, ${loading_minute}, '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`
+            (veh_type_code, veh_type_desc, veh_qty, veh_unavailable, unloading_minute, loading_minute, veh_type_flag, ist_dt) values 
+            ('${veh_type_code}', '${veh_type_desc}', ${vehQty}, ${vehUnavailable}, ${unloading_minute}, ${loading_minute}, '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
