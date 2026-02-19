@@ -11,6 +11,8 @@ const petrol_tank = require('./petrol-tank')
 const petrol_depot = require('./petrol-depot')
 const petrol_merge_job = require('./petrol-merge-job')
 const petrol = require('./petrol')
+const petrol_group_address = require('./petrol-group-address')
+const petrol_group_vehicle = require('./petrol-group-vehicle')
 
 //Petrol
 router.put('/information', petrol.addPetrolInformation);
@@ -82,5 +84,17 @@ router.post('/petrol-merge-job/information', petrol_merge_job.getPetrolMergeJobI
 router.delete('/petrol-merge-job/information', petrol_merge_job.removePetrolMergeJob);
 router.patch('/petrol-merge-job/information', petrol_merge_job.setPetrolMergeJobInformation);
 router.put('/petrol-merge-job/information', petrol_merge_job.addPetrolMergeJobInformation);
+
+//Petrol group address
+router.post('/group/address/information', petrol_group_address.getPetrolGroupAddressInformation);
+router.delete('/group/address/information', petrol_group_address.removePetrolGroupAddress);
+router.patch('/group/address/information', petrol_group_address.setPetrolGroupAddressInformation);
+router.put('/group/address/information', petrol_group_address.addPetrolGroupAddressInformation);
+
+//Petrol group vehicle
+router.post('/group/vehicle/information', petrol_group_vehicle.getPetrolGroupVehicleInformation);
+router.delete('/group/vehicle/information', petrol_group_vehicle.removePetrolGroupVehicle);
+router.patch('/group/vehicle/information', petrol_group_vehicle.setPetrolGroupVehicleInformation);
+router.put('/group/vehicle/information', petrol_group_vehicle.addPetrolGroupVehicleInformation);
 
 module.exports = router;
