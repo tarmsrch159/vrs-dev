@@ -69,6 +69,43 @@ exports.getPetrolGroupInformation = async (req, res, next) => {
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
+                    // ดึงข้อมูลที่อยู่และประเภทรถของแต่ละกลุ่มปั้ม
+                    for (let i = 0; i < tbl_temporary.data.length; i++) {
+                        let groupCode = tbl_temporary.data[i].ptrl_group_code;
+
+                        // ดึงที่อยู่ พร้อมชื่อ จังหวัด อำเภอ ตำบล
+                        let addrScript = `select 
+                            tbl_petrol_group_address.ptrl_group_addr_code,
+                            tbl_petrol_group_address.prov_code, tbl_province.prov_desc,
+                            tbl_petrol_group_address.amph_code, tbl_amphure.amph_desc,
+                            tbl_petrol_group_address.tamb_code, tbl_tambon.tamb_desc
+                            from tbl_petrol_group_address
+                            left join tbl_province on tbl_petrol_group_address.prov_code = tbl_province.prov_code
+                            left join tbl_amphure on tbl_petrol_group_address.amph_code = tbl_amphure.amph_code
+                            left join tbl_tambon on tbl_petrol_group_address.tamb_code = tbl_tambon.tamb_code
+                            where tbl_petrol_group_address.ptrl_group_code = '${groupCode}' and tbl_petrol_group_address.flag = '1';`;
+                        let addrResult = await pgConn.get(dbPrefix + lic_code, addrScript, config.connectionString());
+                        if (!addrResult.code && addrResult.data.length > 0) {
+                            tbl_temporary.data[i].address = JSON.parse(JSON.stringify(addrResult.data).replace(/\:null/gi, "\:\"\""));
+                        } else {
+                            tbl_temporary.data[i].address = [];
+                        }
+
+                        // ดึงประเภทรถ พร้อมชื่อประเภทรถ
+                        let vehScript = `select 
+                            tbl_petrol_group_veh.ptrl_group_veh_code,
+                            tbl_petrol_group_veh.veh_type_code, tbl_vehicle_type.veh_type_desc
+                            from tbl_petrol_group_veh
+                            left join tbl_vehicle_type on tbl_petrol_group_veh.veh_type_code = tbl_vehicle_type.veh_type_code
+                            where tbl_petrol_group_veh.ptrl_group_code = '${groupCode}' and tbl_petrol_group_veh.flag = '1';`;
+                        let vehResult = await pgConn.get(dbPrefix + lic_code, vehScript, config.connectionString());
+                        if (!vehResult.code && vehResult.data.length > 0) {
+                            tbl_temporary.data[i].veh_type = JSON.parse(JSON.stringify(vehResult.data).replace(/\:null/gi, "\:\"\""));
+                        } else {
+                            tbl_temporary.data[i].veh_type = [];
+                        }
+                    }
+
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
@@ -277,6 +314,8 @@ exports.addPetrolGroupInformation = async (req, res, next) => {
             ptrl_group_desc,
             ptrl_group_short_desc,
             off_code,
+            address,
+            veh_type,
             action
         } = req.body[0];
 
@@ -321,13 +360,46 @@ exports.addPetrolGroupInformation = async (req, res, next) => {
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
+
+                // --- เพิ่มที่อยู่ ปั้ม ---
+                let inserted_addresses = [];
+                if (address != undefined && Array.isArray(address)) {
+                    for (let a = 0; a < address.length; a++) {
+                        let { prov_code, amph_code, tamb_code } = address[a];
+                        let tambArr = Array.isArray(tamb_code) ? tamb_code : [tamb_code];
+                        for (let t = 0; t < tambArr.length; t++) {
+                            let ptrl_group_addr_code = 'pgac-' + moment().format('x');
+                            let addrScript = `insert into tbl_petrol_group_address 
+                            (ptrl_group_addr_code, ptrl_group_code, prov_code, amph_code, tamb_code, ist_dt, off_code, flag) values 
+                            ('${ptrl_group_addr_code}', '${ptrl_group_code}', '${prov_code}', '${amph_code}', '${tambArr[t]}', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${off_code}', '1');`
+                            await pgConn.execute(dbPrefix + lic_code, addrScript, config.connectionString());
+                            inserted_addresses.push({ ptrl_group_addr_code, prov_code, amph_code, tamb_code: tambArr[t] });
+                        }
+                    }
+                }
+
+                // --- เพิ่มประเภทรถ ---
+                let inserted_vehicles = [];
+                if (veh_type != undefined && Array.isArray(veh_type)) {
+                    for (let v = 0; v < veh_type.length; v++) {
+                        let ptrl_group_veh_code = 'pgvc-' + moment().format('x');
+                        let vehScript = `insert into tbl_petrol_group_veh 
+                        (ptrl_group_veh_code, ptrl_group_code, veh_type_code, flag, ist_dt, off_code) values 
+                        ('${ptrl_group_veh_code}', '${ptrl_group_code}', '${veh_type[v]}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${off_code}');`
+                        await pgConn.execute(dbPrefix + lic_code, vehScript, config.connectionString());
+                        inserted_vehicles.push({ ptrl_group_veh_code, veh_type_code: veh_type[v] });
+                    }
+                }
+
                 //debugger
                 let response = [{
                     status: 'success',
                     invalid_code: '0',
                     message: '',
                     data: [{
-                        ptrl_group_code: ptrl_group_code
+                        ptrl_group_code: ptrl_group_code,
+                        inserted_addresses: inserted_addresses,
+                        inserted_vehicles: inserted_vehicles
                     }],
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
