@@ -70,7 +70,8 @@ exports.getDepotWorkedDateInformation = async (req, res, next) => {
                 off_desc,
                 tbl_depot_worked_date.ist_dt,
                 tbl_depot_worked_date.mdf_dt,
-                tbl_depot_worked_date.rm_dt 
+                tbl_depot_worked_date.rm_dt,
+                tbl_depot_worked_date.wrk_seq
                 from tbl_depot
                 left join tbl_office on tbl_depot.off_code = tbl_office.off_code
                 left join tbl_depot_worked_date on tbl_depot.dpo_code = tbl_depot_worked_date.dpo_code 
@@ -101,7 +102,8 @@ exports.getDepotWorkedDateInformation = async (req, res, next) => {
                 off_desc,
                 tbl_depot_worked_date.ist_dt,
                 tbl_depot_worked_date.mdf_dt,
-                tbl_depot_worked_date.rm_dt 
+                tbl_depot_worked_date.rm_dt,
+                tbl_depot_worked_date.wrk_seq
                 from tbl_depot
                 left join tbl_office on tbl_depot.off_code = tbl_office.off_code
                 left join tbl_depot_worked_date on tbl_depot.dpo_code = tbl_depot_worked_date.dpo_code 
@@ -114,7 +116,7 @@ exports.getDepotWorkedDateInformation = async (req, res, next) => {
                 script += ` and tbl_depot.dpo_code = '${dpo_code}' `
             }
 
-            script += `  order by tbl_depot_worked_date.wrk_date_code asc;`
+            script += `  order by tbl_depot_worked_date.wrk_date_code, tbl_depot_worked_date.wrk_seq asc;`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
