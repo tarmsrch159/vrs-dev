@@ -15,7 +15,6 @@ exports.getPetrolInformation = async (req, res, next) => {
         ptrl_short_desc: "",
         ptrl_address: "",
         ptrl_zip_code: "",
-        ptrl_city: "",
         ptrl_country_code: "",
         ptrl_unloading_minute: 0,
         ptrl_expenses_per_km: 0,
@@ -63,7 +62,7 @@ exports.getPetrolInformation = async (req, res, next) => {
             page_limit = page_limit || 100;
 
             if (ptrl_code.toString().toUpperCase() != 'ALL') {
-                script = `select ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_city, ptrl_country_code,
+                script = `select ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_country_code,
                 ptrl_unloading_minute, ptrl_expenses_per_km, ptrl_area, ptrl_option_pump, ptrl_option_mrge_orders, ptrl_lat, ptrl_lon,
                 tbl_petrol.off_code, off_desc, tbl_petrol.ptrl_group_code, ptrl_group_desc, tbl_petrol.ist_dt, tbl_petrol.mdf_dt, tbl_petrol.rm_dt, 
                 ptrl_flag, ptrl_remark, ptrl_sales_group, ptrl_sales_type, auto_order, tbl_petrol.prov_code, tbl_petrol.amph_code, tbl_petrol.tamb_code, tbl_province.prov_desc, tbl_amphure.amph_desc, tbl_tambon.tamb_desc
@@ -76,7 +75,7 @@ exports.getPetrolInformation = async (req, res, next) => {
                 where ptrl_flag = '1' and tbl_petrol.ptrl_code = '${ptrl_code}'`;
             }
             else {
-                script = `select ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_city, ptrl_country_code,
+                script = `select ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_country_code,
                 ptrl_unloading_minute, ptrl_expenses_per_km, ptrl_area, ptrl_option_pump, ptrl_option_mrge_orders, ptrl_lat, ptrl_lon,
                 tbl_petrol.off_code, off_desc, tbl_petrol.ptrl_group_code, ptrl_group_desc, tbl_petrol.ist_dt, tbl_petrol.mdf_dt, tbl_petrol.rm_dt, 
                 ptrl_flag, ptrl_remark, ptrl_sales_group, ptrl_sales_type, auto_order, tbl_petrol.prov_code, tbl_petrol.amph_code, tbl_petrol.tamb_code, tbl_province.prov_desc, tbl_amphure.amph_desc, tbl_tambon.tamb_desc  
@@ -295,7 +294,6 @@ exports.setPetrolInformation = async (req, res, next) => {
             ptrl_short_desc,
             ptrl_address,
             ptrl_zip_code,
-            ptrl_city,
             ptrl_country_code,
             ptrl_unloading_minute,
             ptrl_expenses_per_km,
@@ -317,7 +315,7 @@ exports.setPetrolInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (ptrl_code == undefined || ptrl_number == undefined || ptrl_desc == undefined || ptrl_city == undefined
+        if (ptrl_code == undefined || ptrl_number == undefined || ptrl_desc == undefined
             || ptrl_short_desc == undefined || ptrl_address == undefined || ptrl_zip_code == undefined || ptrl_country_code == undefined || ptrl_unloading_minute == undefined
             || ptrl_expenses_per_km == undefined || ptrl_area == undefined || ptrl_option_pump == undefined || ptrl_option_mrge_orders == undefined
             || ptrl_lat == undefined || ptrl_lon == undefined || off_code == undefined || ptrl_group_code == undefined
@@ -344,7 +342,6 @@ exports.setPetrolInformation = async (req, res, next) => {
             ptrl_short_desc = '${ptrl_short_desc}',
             ptrl_address = '${ptrl_address}',
             ptrl_zip_code = '${ptrl_zip_code}',
-            ptrl_city = '${ptrl_city}',
             ptrl_country_code = '${ptrl_country_code}',
             ptrl_unloading_minute = ${ptrl_unloading_minute},
             ptrl_expenses_per_km = ${ptrl_expenses_per_km},
@@ -422,7 +419,6 @@ exports.addPetrolInformation = async (req, res, next) => {
             ptrl_short_desc,
             ptrl_address,
             ptrl_zip_code,
-            ptrl_city,
             ptrl_country_code,
             ptrl_unloading_minute,
             ptrl_expenses_per_km,
@@ -444,8 +440,7 @@ exports.addPetrolInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (ptrl_number == undefined || ptrl_desc == undefined || ptrl_city == undefined
-            || ptrl_short_desc == undefined || ptrl_address == undefined || ptrl_zip_code == undefined || ptrl_country_code == undefined || ptrl_unloading_minute == undefined
+        if (ptrl_number == undefined || ptrl_desc == undefined || ptrl_short_desc == undefined || ptrl_address == undefined || ptrl_zip_code == undefined || ptrl_country_code == undefined || ptrl_unloading_minute == undefined
             || ptrl_expenses_per_km == undefined || ptrl_area == undefined || ptrl_option_pump == undefined || ptrl_option_mrge_orders == undefined
             || ptrl_lat == undefined || ptrl_lon == undefined || off_code == undefined || ptrl_group_code == undefined
             || action == undefined || ptrl_sales_group == undefined || ptrl_sales_type == undefined || auto_order == undefined || prov_code == undefined || amph_code == undefined || tamb_code == undefined) {
@@ -485,11 +480,11 @@ exports.addPetrolInformation = async (req, res, next) => {
 
             let ptrl_code = 'petr-' + moment().format('x');
             script = `insert into tbl_petrol 
-            (ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_city, ptrl_country_code, ptrl_unloading_minute,
+            (ptrl_code, ptrl_number, ptrl_desc, ptrl_short_desc, ptrl_address, ptrl_zip_code, ptrl_country_code, ptrl_unloading_minute,
             ptrl_expenses_per_km, ptrl_area, ptrl_option_pump, ptrl_option_mrge_orders,
             ptrl_lat, ptrl_lon, off_code, ptrl_group_code, ptrl_flag, ist_dt, ptrl_remark, ptrl_sales_group, ptrl_sales_type, auto_order, prov_code, amph_code, tamb_code) 
             values 
-            ('${ptrl_code}', '${ptrl_number}', '${ptrl_desc}', '${ptrl_short_desc}', '${ptrl_address}', '${ptrl_zip_code}', '${ptrl_city}', 
+            ('${ptrl_code}', '${ptrl_number}', '${ptrl_desc}', '${ptrl_short_desc}', '${ptrl_address}', '${ptrl_zip_code}', 
             '${ptrl_country_code}', ${ptrl_unloading_minute}, ${ptrl_expenses_per_km}, 
             ${ptrl_area}, '${ptrl_option_pump}', '${ptrl_option_mrge_orders}', ${ptrl_lat}, ${ptrl_lon}, '${off_code}', '${ptrl_group_code}',
             '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${ptrl_remark}', '${ptrl_sales_group}', '${ptrl_sales_type}', '${auto_order}', '${prov_code}', '${amph_code}', '${tamb_code}');`

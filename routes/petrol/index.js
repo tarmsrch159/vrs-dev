@@ -79,7 +79,10 @@ router.put('/depot/information', petrol_depot.addPetrolDepotInformation);
 
 //Petrol merge job
 router.post('/petrol-merge-job/information', petrol_merge_job.getPetrolMergeJobInformation);
+router.post('/petrol-merge-job/details', petrol_merge_job.getPetrolMergeJobDetails);
 router.delete('/petrol-merge-job/information', petrol_merge_job.removePetrolMergeJob);
+router.delete('/petrol-merge-job/details', petrol_merge_job.removePetrolMergeJobDetails);
+router.delete('/petrol-merge-job/details/id', petrol_merge_job.removePetrolMergeJobDetailsById);
 router.patch('/petrol-merge-job/information', petrol_merge_job.setPetrolMergeJobInformation);
 router.put('/petrol-merge-job/information', petrol_merge_job.addPetrolMergeJobInformation);
 
