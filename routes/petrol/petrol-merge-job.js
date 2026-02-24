@@ -46,9 +46,8 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
             return;
         } else {
 
-            let script = ``;
-            if (ptrl_merge_code.toString().toUpperCase() != 'ALL') {
-                script = `select tbl_petrol_merge_job.ptrl_merge_job_code,
+            let script = `
+                SELECT tbl_petrol_merge_job.ptrl_merge_job_code,
                 tbl_petrol_merge_job.ptrl_merge_code,
                 tbl_petrol_merge_job.ptrl_code,
                 tbl_petrol.ptrl_number,
@@ -56,7 +55,6 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
                 tbl_petrol.ptrl_short_desc,
                 tbl_petrol_group.ptrl_group_code,
                 tbl_petrol_group.ptrl_group_desc,
-                tbl_petrol_merge_job.ptrl_merge_code,
                 tbl_merge_petrol.ptrl_number as ptrl_merge_number,
                 tbl_merge_petrol.ptrl_desc as ptrl_merge_desc,
                 tbl_merge_petrol.ptrl_short_desc as ptrl_merge_short_desc,
@@ -65,41 +63,20 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
                 tbl_petrol_merge_job.ist_dt,
                 tbl_petrol_merge_job.mdf_dt,
                 tbl_petrol_merge_job.rm_dt 
+                FROM tbl_petrol_merge_job
+                LEFT JOIN tbl_petrol ON tbl_petrol_merge_job.ptrl_code = tbl_petrol.ptrl_code
+                LEFT JOIN tbl_office ON tbl_petrol.off_code = tbl_office.off_code
+                LEFT JOIN tbl_petrol_group ON tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
+                LEFT JOIN tbl_petrol tbl_merge_petrol ON tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_petrol.ptrl_code
+                WHERE tbl_petrol_merge_job.petrol_merge_job_flag = '1'
+            `;
 
-                from tbl_petrol_merge_job
-                left join tbl_petrol on tbl_petrol_merge_job.ptrl_code = tbl_petrol.ptrl_code
-                left join tbl_office on tbl_petrol.off_code = tbl_office.off_code
-                left join tbl_petrol_group on tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
-                left join tbl_petrol tbl_merge_petrol on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_petrol.ptrl_code
-                where tbl_petrol_merge_job.petrol_merge_job_flag = '1' and ptrl_merge_code is not null 
-                and tbl_petrol_merge_job.ptrl_code = '${ptrl_code}' 
-                and tbl_petrol_merge_job.ptrl_merge_code = '${ptrl_merge_code}' `;
+            if (ptrl_code.toString().toUpperCase() !== 'ALL') {
+                script += ` AND tbl_petrol_merge_job.ptrl_code = '${ptrl_code}' `;
             }
-            else {
-                script = `select tbl_petrol_merge_job.ptrl_merge_job_code,
-                tbl_petrol_merge_job.ptrl_merge_code,
-                tbl_petrol_merge_job.ptrl_code,
-                tbl_petrol.ptrl_number,
-                tbl_petrol.ptrl_desc,
-                tbl_petrol.ptrl_short_desc,
-                tbl_petrol_group.ptrl_group_code,
-                tbl_petrol_group.ptrl_group_desc,
-                tbl_petrol_merge_job.ptrl_merge_code,
-                tbl_merge_petrol.ptrl_number as ptrl_merge_number,
-                tbl_merge_petrol.ptrl_desc as ptrl_merge_desc,
-                tbl_merge_petrol.ptrl_short_desc as ptrl_merge_short_desc,
-                tbl_petrol.off_code,
-                tbl_office.off_desc,
-                tbl_petrol_merge_job.ist_dt,
-                tbl_petrol_merge_job.mdf_dt,
-                tbl_petrol_merge_job.rm_dt 
-
-                from tbl_petrol_merge_job
-                left join tbl_petrol on tbl_petrol_merge_job.ptrl_code = tbl_petrol.ptrl_code
-                left join tbl_office on tbl_petrol.off_code = tbl_office.off_code
-                left join tbl_petrol_group on tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
-                left join tbl_petrol tbl_merge_petrol on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_petrol.ptrl_code
-                where tbl_petrol_merge_job.petrol_merge_job_flag = '1'`;
+            if (ptrl_merge_code.toString().toUpperCase() !== 'ALL') {
+                script += ` AND tbl_petrol_merge_job.ptrl_merge_code IS NOT NULL 
+                AND tbl_petrol_merge_job.ptrl_merge_code = '${ptrl_merge_code}' `;
             }
 
             script += ` order by tbl_merge_petrol.ptrl_desc asc;`
