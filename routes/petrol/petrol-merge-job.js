@@ -31,7 +31,11 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { ptrl_code, ptrl_merge_code, action } = req.body[0];
+        let { ptrl_code, ptrl_merge_code, action, page_index, page_limit } = req.body[0];
+
+        let page = parseInt(page_index) || 1;
+        let limit = parseInt(page_limit) || 10;
+        let offset = (page - 1) * limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ptrl_code == undefined || ptrl_merge_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -47,7 +51,8 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
         } else {
 
             let script = `
-                SELECT tbl_petrol_merge_job.ptrl_merge_job_code,
+                SELECT COUNT(*) OVER() AS total_record,
+                tbl_petrol_merge_job.ptrl_merge_job_code,   
                 tbl_petrol_merge_job.ptrl_merge_code,
                 tbl_petrol_merge_job.ptrl_code,
                 tbl_petrol.ptrl_number,
@@ -79,19 +84,26 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
                 AND tbl_petrol_merge_job.ptrl_merge_code = '${ptrl_merge_code}' `;
             }
 
-            script += ` order by tbl_merge_petrol.ptrl_desc asc;`
+            script += ` order by tbl_merge_petrol.ptrl_desc asc `
+            script += ` limit ${limit} offset ${offset};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
-
+                    let total_item = parseInt(tbl_temporary.data[0].total_record) || 0;
+                    let total_page = Math.ceil(total_item / limit);
+                    tbl_temporary.data.forEach(item => {
+                        delete item.total_record;
+                    });
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        rows_total: total_item,
+                        page_total: total_page,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -103,6 +115,8 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        rows_total: 0,
+                        page_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -162,7 +176,11 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { ptrl_merge_job_code, action } = req.body[0];
+        let { ptrl_merge_job_code, action, page_index, page_limit } = req.body[0];
+
+        const page = parseInt(page_index) || 1;
+        const limit = parseInt(page_limit) || 10;
+        const offset = (page - 1) * limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ptrl_merge_job_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -179,7 +197,8 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
 
             let script = ``;
             if (ptrl_merge_job_code.toString().toUpperCase() != 'ALL') {
-                script = `select tbl_petrol_merge_job.ptrl_merge_job_code,
+                script = `select
+                tbl_petrol_merge_job.ptrl_merge_job_code,
                 tbl_petrol_merge_job.ptrl_code,
                 tbl_ptrl.ptrl_number,
                 tbl_ptrl.ptrl_desc,
@@ -204,7 +223,8 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 where tbl_petrol_merge_job_info.ptrl_merge_job_code = '${ptrl_merge_job_code}' `;
             }
             else {
-                script = `select tbl_petrol_merge_job.ptrl_merge_job_code,
+                script = `select 
+                tbl_petrol_merge_job.ptrl_merge_job_code,
                 tbl_petrol_merge_job.ptrl_code,
                 tbl_ptrl.ptrl_number,
                 tbl_ptrl.ptrl_desc,
@@ -230,7 +250,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 `;
             }
 
-            script += ` order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc;`
+            script += ` order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
@@ -240,8 +260,8 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
                     // ทำการ Grouping ข้อมูลฝั่ง Node.js 
                     let groupedData = Object.values(tbl_temporary.data.reduce((acc, curr) => {
-                        // ใช้ ptrl_merge_job_code กับ dpo_code เป็นคีย์ในการจัดกลุ่ม
-                        let key = curr.ptrl_merge_job_code + '_' + curr.dpo_code;
+                        // ใช้ ptrl_merge_job_code เป็นคีย์ในการจัดกลุ่มเพื่อไม่ให้ซ้ำ
+                        let key = curr.ptrl_merge_job_code;
 
                         if (!acc[key]) {
                             acc[key] = {
@@ -254,31 +274,49 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                                 ptrl_merge_number: curr.ptrl_merge_number,
                                 ptrl_merge_desc: curr.ptrl_merge_desc,
                                 ptrl_merge_short_desc: curr.ptrl_merge_short_desc,
-                                dpo_code: curr.dpo_code,
-                                dpo_desc: curr.dpo_desc,
                                 ist_dt: curr.ist_dt,
                                 mdf_dt: curr.mdf_dt,
                                 rm_dt: curr.rm_dt,
-                                itm_data: [],
+                                data: [], // สำหรับเก็บ dpo_code และ itm_data
                             };
                         }
 
-                        // เอา itm_code ดันเข้าไปใน Array ของกลุ่มนั้นๆ
-                        if (curr.itm_code) {
+                        // เอา dpo_code และ itm_code จัดเข้ากลุ่มย่อย
+                        if (curr.dpo_code) {
+                            let dpo_idx = acc[key].data.findIndex(d => d.dpo_code === curr.dpo_code);
+                            if (dpo_idx === -1) {
+                                acc[key].data.push({
+                                    dpo_code: curr.dpo_code,
+                                    dpo_desc: curr.dpo_desc,
+                                    itm_data: []
+                                });
+                                dpo_idx = acc[key].data.length - 1;
+                            }
 
-                            acc[key].itm_data.push({
-                                itm_code: curr.itm_code,
-                                itm_desc: curr.itm_desc
-                            });
+                            if (curr.itm_code) {
+                                let itm_idx = acc[key].data[dpo_idx].itm_data.findIndex(i => i.itm_code === curr.itm_code);
+                                if (itm_idx === -1) {
+                                    acc[key].data[dpo_idx].itm_data.push({
+                                        itm_code: curr.itm_code,
+                                        itm_desc: curr.itm_desc
+                                    });
+                                }
+                            }
                         }
 
                         return acc;
                     }, {}));
+
+                    let total_item = groupedData.length;
+                    let total_page = Math.ceil(total_item / limit);
+                    let paginatedData = groupedData.slice(offset, offset + limit);
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
-                        data: groupedData,
+                        data: paginatedData,
+                        rows_total: total_item,
+                        page_total: total_page,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -290,6 +328,8 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        rows_total: 0,
+                        page_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
