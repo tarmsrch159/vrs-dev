@@ -27,6 +27,9 @@ exports.getDepotInformation = async (req, res, next) => {
         dpo_group_code: "",
         dpo_group_desc: "",
         dpo_flag: "",
+        prov_code: "",
+        amph_code: "",
+        tamb_code: "",
         ist_dt: "",
         mdf_dt: "",
         rm_dt: ""
@@ -60,19 +63,27 @@ exports.getDepotInformation = async (req, res, next) => {
             if (dpo_code.toString().toUpperCase() != 'ALL') {
                 script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_city, dpo_country_code,
                 dpo_loading_minute, dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon,
-                tbl_depot.off_code, off_desc, tbl_depot.dpo_group_code, dpo_group_desc, tbl_depot.ist_dt, tbl_depot.mdf_dt, tbl_depot.rm_dt, dpo_flag 
+                tbl_depot.off_code, off_desc, tbl_depot.dpo_group_code, dpo_group_desc, tbl_depot.ist_dt, tbl_depot.mdf_dt, tbl_depot.rm_dt, tbl_depot.prov_code, 
+                tbl_depot.amph_code, tbl_depot.tamb_code, tbl_province.prov_desc, tbl_amphure.amph_desc, tbl_tambon.tamb_desc, dpo_flag 
                 from tbl_depot 
                 left join tbl_office on tbl_depot.off_code = tbl_office.off_code 
                 left join tbl_depot_group on tbl_depot.dpo_group_code = tbl_depot_group.dpo_group_code 
+                left join tbl_province on tbl_depot.prov_code = tbl_province.prov_code 
+                left join tbl_amphure on tbl_depot.amph_code = tbl_amphure.amph_code 
+                left join tbl_tambon on tbl_depot.tamb_code = tbl_tambon.tamb_code 
                 where dpo_flag = '1' and tbl_depot.dpo_code = '${dpo_code}'`;
             }
             else {
                 script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_city, dpo_country_code,
                 dpo_loading_minute, dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon,
-                tbl_depot.off_code, off_desc, tbl_depot.dpo_group_code, dpo_group_desc, tbl_depot.ist_dt, tbl_depot.mdf_dt, tbl_depot.rm_dt, dpo_flag 
+                tbl_depot.off_code, off_desc, tbl_depot.dpo_group_code, dpo_group_desc, tbl_depot.ist_dt, tbl_depot.mdf_dt, tbl_depot.rm_dt, tbl_depot.prov_code, 
+                tbl_depot.amph_code, tbl_depot.tamb_code, tbl_province.prov_desc, tbl_amphure.amph_desc, tbl_tambon.tamb_desc, dpo_flag 
                 from tbl_depot 
                 left join tbl_office on tbl_depot.off_code = tbl_office.off_code 
                 left join tbl_depot_group on tbl_depot.dpo_group_code = tbl_depot_group.dpo_group_code 
+                left join tbl_province on tbl_depot.prov_code = tbl_province.prov_code 
+                left join tbl_amphure on tbl_depot.amph_code = tbl_amphure.amph_code 
+                left join tbl_tambon on tbl_depot.tamb_code = tbl_tambon.tamb_code 
                 where dpo_flag = '1'`;
             }
 
@@ -148,11 +159,29 @@ exports.getDepotInformation = async (req, res, next) => {
                         }
                     }
 
+                    const formattedData = tbl_temporary.data.map(item => {
+                        const {
+                            prov_code, prov_desc,
+                            amph_code, amph_desc,
+                            tamb_code, tamb_desc,
+                            ...rest
+                        } = item;
+
+                        return {
+                            ...rest,
+                            location: {
+                                province: { code: prov_code, name: prov_desc },
+                                amphure: { code: amph_code, name: amph_desc },
+                                tambon: { code: tamb_code, name: tamb_desc }
+                            }
+                        };
+                    })
+
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
-                        data: tbl_temporary.data,
+                        data: formattedData,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
                         page_total: (page_total <= 0 ? 1 : page_total),
                         rows_total: rows_total
@@ -293,6 +322,9 @@ exports.setDepotInformation = async (req, res, next) => {
             dpo_lon,
             off_code,
             dpo_group_code,
+            prov_code,
+            amph_code,
+            tamb_code,
             action
         } = req.body[0];
 
@@ -329,7 +361,10 @@ exports.setDepotInformation = async (req, res, next) => {
             dpo_lon = '${dpo_lon}',
             off_code = '${off_code}',
             dpo_group_code = '${dpo_group_code}',
-            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+            prov_code = '${prov_code}',
+            amph_code = '${amph_code}',
+            tamb_code = '${tamb_code}',
+            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}'
             where dpo_code = '${dpo_code}';`
 
             script = script.replace(/'NULL'/gi, "NULL")
@@ -398,6 +433,9 @@ exports.addDepotInformation = async (req, res, next) => {
             dpo_lon,
             off_code,
             dpo_group_code,
+            prov_code,
+            amph_code,
+            tamb_code,
             action
         } = req.body[0];
 
@@ -405,7 +443,7 @@ exports.addDepotInformation = async (req, res, next) => {
         if (dpo_number == undefined || dpo_desc == undefined || dpo_city == undefined
             || dpo_short_desc == undefined || dpo_address == undefined || dpo_zip_code == undefined || dpo_country_code == undefined || dpo_loading_minute == undefined
             || dpo_expenses_per_km == undefined || dpo_area == undefined || dpo_lat == undefined || dpo_lon == undefined || off_code == undefined || dpo_group_code == undefined
-            || action == undefined) {
+            || prov_code == undefined || amph_code == undefined || tamb_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -441,12 +479,12 @@ exports.addDepotInformation = async (req, res, next) => {
             let dpo_code = 'dpo-' + moment().format('x');
             script = `insert into tbl_depot 
             (dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_city, dpo_country_code, dpo_loading_minute,
-            dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon, off_code, dpo_group_code, dpo_flag, ist_dt) 
+            dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon, off_code, dpo_group_code, prov_code, amph_code, tamb_code, dpo_flag, ist_dt) 
             values 
             ('${dpo_code}', '${dpo_number}', '${dpo_desc}', '${dpo_short_desc}', '${dpo_address}', '${dpo_zip_code}', '${dpo_city}', 
             '${dpo_country_code}', ${dpo_loading_minute}, ${dpo_expenses_per_km}, 
             ${dpo_area}, ${dpo_lat}, ${dpo_lon}, '${off_code}', '${dpo_group_code}',
-            '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`
+            '${prov_code}', '${amph_code}', '${tamb_code}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`
 
             script = script.replace(/'NULL'/gi, "NULL")
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
