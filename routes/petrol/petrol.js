@@ -39,7 +39,7 @@ exports.getPetrolInformation = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { ptrl_code, off_code, ptrl_group_code, search, page_index, page_limit, action } = req.body[0];
+        let { ptrl_code, off_code, ptrl_group_code, search, page_index, page_limit, action, auto_order } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ptrl_code == undefined || off_code == undefined || ptrl_group_code == undefined || lic_code == undefined
             || search == undefined || page_index == undefined || page_limit == undefined || action == undefined) {
@@ -87,6 +87,10 @@ exports.getPetrolInformation = async (req, res, next) => {
                 left join tbl_amphure on tbl_petrol.amph_code = tbl_amphure.amph_code 
                 left join tbl_tambon on tbl_petrol.tamb_code = tbl_tambon.tamb_code 
                 where ptrl_flag = '1'`;
+            }
+
+            if (auto_order != undefined && auto_order != '') {
+                script += ` and tbl_petrol.auto_order = ${auto_order}`
             }
 
             if (ptrl_group_code.toString().toUpperCase() != 'ALL' && ptrl_group_code.toString().toUpperCase() != '') {
