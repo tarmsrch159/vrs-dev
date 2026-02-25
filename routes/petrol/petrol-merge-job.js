@@ -267,7 +267,6 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
 
                         if (!acc[key]) {
                             acc[key] = {
-                                id: curr.id,
                                 ptrl_merge_job_code: curr.ptrl_merge_job_code,
                                 ptrl_code: curr.ptrl_code,
                                 ptrl_number: curr.ptrl_number,
@@ -300,6 +299,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                                 let itm_idx = acc[key].data[dpo_idx].itm_data.findIndex(i => i.itm_code === curr.itm_code);
                                 if (itm_idx === -1) {
                                     acc[key].data[dpo_idx].itm_data.push({
+                                        id: curr.id,
                                         itm_code: curr.itm_code,
                                         itm_desc: curr.itm_desc
                                     });
