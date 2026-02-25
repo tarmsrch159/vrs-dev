@@ -335,7 +335,11 @@ exports.addPetrolGroupInformation = async (req, res, next) => {
         } else {
 
             let script = ``;
-            script = `select ptrl_group_code from tbl_petrol_group where (ptrl_group_desc = '${ptrl_group_desc}' or ptrl_group_short_desc = '${ptrl_group_short_desc}') and ptrl_group_flag = '1';`
+            script = `select ptrl_group_code from tbl_petrol_group 
+                where (ptrl_group_desc = '${ptrl_group_desc}' 
+                    or ptrl_group_short_desc = '${ptrl_group_short_desc}') 
+                    and ptrl_group_flag = '1';
+            `;
             let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary0.code) {
                 if (tbl_temporary0.data.length > 0) {
