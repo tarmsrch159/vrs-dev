@@ -254,7 +254,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 left join tbl_petrol_merge_job on tbl_petrol_merge_job_info.ptrl_merge_job_code = tbl_petrol_merge_job.ptrl_merge_job_code
                 left join tbl_petrol tbl_ptrl on tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
-                where tbl_petrol_merge_job_info.flag = '1'
+                where tbl_petrol_merge_job_info.flag = '1' AND '0' = '0'
                 AND tbl_ptrl.ptrl_flag = '1'
                 AND tbl_item.itm_flag = '1'`;
             }
@@ -992,9 +992,9 @@ exports.removePetrolMergeJobDetailsByDpo = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { dpo_code, action } = req.body[0];
+        let { ptrl_merge_job_info, action } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (dpo_code == undefined || Array.isArray(dpo_code) == false || dpo_code.length === 0 || lic_code == undefined || action == undefined) {
+        if (ptrl_merge_job_info == undefined || Array.isArray(ptrl_merge_job_info) == false || ptrl_merge_job_info.length === 0 || lic_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -1008,9 +1008,13 @@ exports.removePetrolMergeJobDetailsByDpo = async (req, res, next) => {
         } else {
             let script = ``;
             // ดัก petrol_merge_job_id เป็น array
-            let dpo_codeArr = (Array.isArray(dpo_code) ? dpo_code : [dpo_code]).filter(c => c != null && c !== '');
-            let dpo_codeIn = dpo_codeArr.map(c => `'${c}'`).join(', ');
-            script = `Delete from tbl_petrol_merge_job_info where dpo_code in (${dpo_codeIn});`
+            let conditionTuples = ptrl_merge_job_info
+                .filter(item => item && item.ptrl_merge_job_code && item.dpo_code) // ดักป้องกัน object ว่าง
+                .map(item => `('${item.ptrl_merge_job_code}', '${item.dpo_code}')`)
+                .join(', ');
+            script = `UPDATE tbl_petrol_merge_job_info 
+                      SET flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+                      WHERE (ptrl_merge_job_code, dpo_code) IN (${conditionTuples});`
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
