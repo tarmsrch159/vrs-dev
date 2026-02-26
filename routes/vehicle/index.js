@@ -33,6 +33,7 @@ router.post('/type/information', vehicle_type.getVehicleTypeInformation);
 router.delete('/type/information', vehicle_type.removeVehicleType);
 router.patch('/type/information', vehicle_type.setVehicleTypeInformation);
 router.put('/type/information', vehicle_type.addVehicleTypeInformation);
+router.delete('/type/compartment/information', vehicle_type.removeCompartmentItemById);
 
 //unavailable type
 router.post('/unavailable/type/information', vehicle_unavailable_type.getVehicleUnavailableTypeInformation);

@@ -83,6 +83,7 @@ router.post('/petrol-merge-job/details', petrol_merge_job.getPetrolMergeJobDetai
 router.delete('/petrol-merge-job/information', petrol_merge_job.removePetrolMergeJob);
 router.delete('/petrol-merge-job/details', petrol_merge_job.removePetrolMergeJobDetails);
 router.delete('/petrol-merge-job/details/id', petrol_merge_job.removePetrolMergeJobDetailsById);
+router.delete('/petrol-merge-job/details/dpo', petrol_merge_job.removePetrolMergeJobDetailsByDpo);
 router.patch('/petrol-merge-job/information', petrol_merge_job.setPetrolMergeJobInformation);
 router.put('/petrol-merge-job/information', petrol_merge_job.addPetrolMergeJobInformation);
 
