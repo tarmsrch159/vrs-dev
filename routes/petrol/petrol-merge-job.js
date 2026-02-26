@@ -73,7 +73,9 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
                 LEFT JOIN tbl_office ON tbl_petrol.off_code = tbl_office.off_code
                 LEFT JOIN tbl_petrol_group ON tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
                 LEFT JOIN tbl_petrol tbl_merge_petrol ON tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_petrol.ptrl_code
-                WHERE tbl_petrol_merge_job.petrol_merge_job_flag = '1'
+                WHERE tbl_petrol_merge_job.petrol_merge_job_flag = '1' 
+                AND tbl_petrol_merge_job.ptrl_merge_code IS NOT NULL 
+                AND tbl_petrol.ptrl_flag = '1'
             `;
 
             if (ptrl_code.toString().toUpperCase() !== 'ALL') {
@@ -221,7 +223,11 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 left join tbl_petrol_merge_job on tbl_petrol_merge_job_info.ptrl_merge_job_code = tbl_petrol_merge_job.ptrl_merge_job_code
                 left join tbl_petrol tbl_ptrl on tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
-                where tbl_petrol_merge_job_info.ptrl_merge_job_code = '${ptrl_merge_job_code}' `;
+                where tbl_petrol_merge_job_info.ptrl_merge_job_code = '${ptrl_merge_job_code}' 
+                AND tbl_petrol_merge_job_info.flag = '1'
+                AND tbl_petrol_merge_job.petrol_merge_job_flag = '1'
+                AND tbl_ptrl.ptrl_flag = '1'
+                AND tbl_item.itm_flag = '1'`;
             }
             else {
                 script = `select 
@@ -248,8 +254,9 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 left join tbl_petrol_merge_job on tbl_petrol_merge_job_info.ptrl_merge_job_code = tbl_petrol_merge_job.ptrl_merge_job_code
                 left join tbl_petrol tbl_ptrl on tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
-                where tbl_petrol_merge_job_info.flag = '1' 
-                `;
+                where tbl_petrol_merge_job_info.flag = '1'
+                AND tbl_ptrl.ptrl_flag = '1'
+                AND tbl_item.itm_flag = '1'`;
             }
 
             script += ` order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc`
@@ -520,149 +527,154 @@ exports.setPetrolMergeJobInformation = async (req, res, next) => {
 
 //Success
 exports.addPetrolMergeJobInformation = async (req, res, next) => {
-    // ดึงตัวแปรมาไว้ข้างนอก try...catch เพื่อให้ตอนเก็บ Log มองเห็นตัวแปร
-    const lic_code = req.header('lic_code');
-    const actionData = req.body[0]?.action?.[0] || {};
 
-    try {
+    return (async () => {
+        let lic_code = req.header('lic_code');
         let { ptrl_code, ptrl_merge_code, action } = req.body[0];
 
-        // เช็คพารามิเตอร์เบื้องต้น
-        if (!ptrl_code || !ptrl_merge_code || !action || !lic_code) {
-            return res.status(200).send([{
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (!ptrl_code || !ptrl_merge_code || !Array.isArray(ptrl_merge_code) || !action || !lic_code) {
+            let response = [{
                 status: 'error',
                 invalid_code: '-1',
                 message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }]);
-        }
+            }]
 
-        let insertedData = [];
-        let isError = false;
+            res.status(200).send(response);
+            return;
+        } else {
 
-        if (Array.isArray(ptrl_merge_code) && ptrl_merge_code.length > 0) {
-            if (typeof ptrl_merge_code[0] === 'object' && ptrl_merge_code[0].ptrl_code) {
+            let insertedData = [];
+            let isError = false;
 
-                // --- Loop 1: วนลูปตาม ptrl_merge_code ---
-                for (let i = 0; i < ptrl_merge_code.length; i++) {
-                    let mergeObj = ptrl_merge_code[i];
-                    let current_merge_code = mergeObj.ptrl_code;
-                    let mergeData = mergeObj.data || [];
+            if (Array.isArray(ptrl_merge_code) && ptrl_merge_code.length > 0) {
+                if (typeof ptrl_merge_code[0] === 'object' && ptrl_merge_code[0].ptrl_code) {
 
-                    let ptrl_merge_job_code = '';
+                    // --- Loop 1: วนลูปตาม ptrl_merge_code ---
+                    for (let i = 0; i < ptrl_merge_code.length; i++) {
+                        let mergeObj = ptrl_merge_code[i];
+                        let current_merge_code = mergeObj.ptrl_code;
+                        let mergeData = mergeObj.data || [];
 
-                    // Step 1: เช็ค Master Job ว่ามีอยู่แล้วหรือยัง
-                    let scriptCheck = `
-                        SELECT ptrl_merge_job_code 
-                        FROM tbl_petrol_merge_job 
-                        WHERE petrol_merge_job_flag = '1' 
-                        AND ptrl_code = '${ptrl_code}' 
-                        AND ptrl_merge_code = '${current_merge_code}';
-                    `;
-                    let tbl_check = await pgConn.get(dbPrefix + lic_code, scriptCheck, config.connectionString());
+                        let ptrl_merge_job_code = '';
 
-                    if (tbl_check && tbl_check.data && tbl_check.data.length > 0) {
-                        ptrl_merge_job_code = tbl_check.data[0].ptrl_merge_job_code;
-
-                        // Step 1.5: ถ้ามี ptrl_merge_job_code อยู่แล้ว → ลบ itm_code ทั้งหมดของชุดนี้ทิ้งก่อน แล้วค่อยเพิ่มใหม่
-                        let deleteAllScript = `
-                            DELETE FROM tbl_petrol_merge_job_info 
-                            WHERE ptrl_merge_job_code = '${ptrl_merge_job_code}' 
-                            AND flag = '1';
+                        // Step 1: เช็ค Master Job ว่ามีอยู่แล้วหรือยัง
+                        let scriptCheck = `
+                            SELECT ptrl_merge_job_code 
+                            FROM tbl_petrol_merge_job 
+                            WHERE petrol_merge_job_flag = '1' 
+                            AND ptrl_code = '${ptrl_code}' 
+                            AND ptrl_merge_code = '${current_merge_code}';
                         `;
-                        await pgConn.execute(dbPrefix + lic_code, deleteAllScript, config.connectionString());
+                        let tbl_check = await pgConn.get(dbPrefix + lic_code, scriptCheck, config.connectionString());
 
-                    } else {
-                        // สร้าง Master Job ใหม่
-                        ptrl_merge_job_code = 'pmgr-' + moment().format('x') + Math.floor(Math.random() * 10000);
-                        let scriptInsertJob = `
-                            INSERT INTO tbl_petrol_merge_job 
-                            (ptrl_merge_job_code, ptrl_code, ptrl_merge_code, petrol_merge_job_flag, ist_dt) 
-                            VALUES 
-                            ('${ptrl_merge_job_code}', '${ptrl_code}', '${current_merge_code}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');
-                        `;
-                        let tbl_insertJob = await pgConn.execute(dbPrefix + lic_code, scriptInsertJob, config.connectionString());
-                        if (tbl_insertJob.code) {
-                            isError = true;
-                            break;
-                        }
-                    }
-
-                    // Step 2: วนลูป Data เพื่อ Insert ชุดใหม่เข้าไป (ข้อมูลเก่าถูกลบไปแล้วทั้งหมดใน Step 1.5)
-                    for (let j = 0; j < mergeData.length; j++) {
-                        let currentData = mergeData[j];
-                        let current_dpo_code = currentData.dpo_code;
-                        let itmCodeArr = currentData.itm_code || [];
-
-                        if (itmCodeArr.length > 0) {
-                            let valuesArr = [];
-                            for (let k = 0; k < itmCodeArr.length; k++) {
-                                let current_itm_code = itmCodeArr[k];
-                                valuesArr.push(`('${ptrl_merge_job_code}', '${current_itm_code}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${current_dpo_code}')`);
-                            }
-
-                            let scriptInsertInfo = `
-                                INSERT INTO tbl_petrol_merge_job_info 
-                                (ptrl_merge_job_code, itm_code, flag, ist_dt, dpo_code) 
-                                VALUES ${valuesArr.join(', ')}
-                                ON CONFLICT (ptrl_merge_job_code, itm_code, dpo_code) 
-                                DO UPDATE SET flag = '1', ist_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}', rm_dt = NULL;
+                        if (tbl_check && tbl_check.data && tbl_check.data.length > 0) {
+                            // มีอยู่แล้ว → ดึง ptrl_merge_job_code เดิมมาใช้
+                            ptrl_merge_job_code = tbl_check.data[0].ptrl_merge_job_code;
+                        } else {
+                            // สร้าง Master Job ใหม่
+                            ptrl_merge_job_code = 'pmgr-' + moment().format('x') + Math.floor(Math.random() * 10000);
+                            let scriptInsertJob = `
+                                INSERT INTO tbl_petrol_merge_job 
+                                (ptrl_merge_job_code, ptrl_code, ptrl_merge_code, petrol_merge_job_flag, ist_dt) 
+                                VALUES 
+                                ('${ptrl_merge_job_code}', '${ptrl_code}', '${current_merge_code}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');
                             `;
-
-                            let tbl_insertInfo = await pgConn.execute(dbPrefix + lic_code, scriptInsertInfo, config.connectionString());
-
-                            if (!tbl_insertInfo.code) {
-                                for (let k = 0; k < itmCodeArr.length; k++) {
-                                    insertedData.push({ ptrl_merge_job_code: ptrl_merge_job_code, itm_code: itmCodeArr[k], dpo_code: current_dpo_code });
-                                }
-                            } else {
+                            let tbl_insertJob = await pgConn.execute(dbPrefix + lic_code, scriptInsertJob, config.connectionString());
+                            if (tbl_insertJob.code) {
                                 isError = true;
                                 break;
                             }
                         }
+
+                        // Step 2: วนลูป data เพื่อ Insert เข้า tbl_petrol_merge_job_info (เพิ่มใหม่ ไม่ลบของเก่า)
+                        for (let j = 0; j < mergeData.length; j++) {
+                            let currentData = mergeData[j];
+                            let current_dpo_code = currentData.dpo_code;
+                            if (!current_dpo_code) continue; // ข้าม data ที่ไม่มี dpo_code
+                            let itmCodeArr = (currentData.itm_code || []).filter(item => item != null && item !== ''); //กรองค่าว่าง
+
+                            if (itmCodeArr.length > 0) {
+                                let valuesArr = [];
+                                for (let k = 0; k < itmCodeArr.length; k++) {
+                                    let current_itm_code = itmCodeArr[k];
+                                    valuesArr.push(`('${ptrl_merge_job_code}', '${current_itm_code}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '${current_dpo_code}')`);
+                                }
+
+                                let scriptInsertInfo = `
+                                    INSERT INTO tbl_petrol_merge_job_info 
+                                    (ptrl_merge_job_code, itm_code, flag, ist_dt, dpo_code) 
+                                    VALUES ${valuesArr.join(', ')}
+                                    ON CONFLICT (ptrl_merge_job_code, itm_code, dpo_code) 
+                                    DO UPDATE SET flag = '1', ist_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}', rm_dt = NULL;
+                                `;
+
+                                let tbl_insertInfo = await pgConn.execute(dbPrefix + lic_code, scriptInsertInfo, config.connectionString());
+
+                                if (!tbl_insertInfo.code) {
+                                    for (let k = 0; k < itmCodeArr.length; k++) {
+                                        insertedData.push({ ptrl_merge_job_code: ptrl_merge_job_code, itm_code: itmCodeArr[k], dpo_code: current_dpo_code });
+                                    }
+                                } else {
+                                    isError = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (isError) break;
                     }
-                    if (isError) break;
                 }
             }
-        }
 
-        // จัดการ Response เมื่อทำงานเสร็จ
-        if (isError) {
-            await xglobal.action_logs(lic_code, actionData.id, 'เพิ่มข้อมูลปั้มที่สามารถพ่วงกันได้', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูลบางส่วนได้', actionData.value);
-            return res.status(200).send([{
-                status: 'error',
-                invalid_code: '-3',
-                message: `ไม่สามารถบันทึกข้อมูลบางส่วนได้, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
-                data: [],
+            // จัดการ Response เมื่อทำงานเสร็จ
+            if (isError) {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถบันทึกข้อมูลบางส่วนได้, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลปั้มที่สามารถพ่วงกันได้', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูลบางส่วนได้', action[0].value);
+                return;
+            }
+
+            // กรณีสำเร็จทั้งหมด
+            let response = [{
+                status: 'success',
+                invalid_code: '0',
+                message: `บันทึกข้อมูลสำเร็จ`,
+                data: insertedData,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }]);
+            }]
+
+            res.status(200).send(response);
+            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลปั้มที่สามารถพ่วงกันได้', JSON.stringify(req.body[0]), 'success', action[0].value);
+            return;
         }
 
-        // กรณีสำเร็จทั้งหมด
-        await xglobal.action_logs(lic_code, actionData.id, 'เพิ่มข้อมูลปั้มที่สามารถพ่วงกันได้', JSON.stringify(req.body[0]), 'success', actionData.value);
-        return res.status(200).send([{
-            status: 'success',
-            invalid_code: '0',
-            message: `บันทึกข้อมูลสำเร็จ`,
-            data: insertedData,
-            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-        }]);
-
-    } catch (err) {
-        console.error(err);
-        if (lic_code && actionData.id) {
-            await xglobal.action_logs(lic_code, actionData.id, 'เพิ่มข้อมูลปั้มที่สามารถพ่วงกันได้', JSON.stringify(req.body[0] || {}), 'Error จากระบบหลังบ้าน', actionData.value);
-        }
-        return res.status(200).send([{
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
             status: 'error',
             invalid_code: '-4',
             message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
             data: [],
-            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-        }]);
-    }
-};
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+        const _lic = req.header('lic_code');
+        const _act = req.body?.[0]?.action?.[0] || {};
+        if (_lic && _act.id) {
+            await xglobal.action_logs(_lic, _act.id, 'เพิ่มข้อมูลปั้มที่สามารถพ่วงกันได้', JSON.stringify(req.body?.[0] || {}), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', _act.value);
+        }
+        return;
+    });
+
+}
 
 
 // exports.addPetrolMergeJobInformation = async (req, res, next) => {
@@ -970,6 +982,79 @@ exports.removePetrolMergeJobDetailsById = async (req, res, next) => {
         }]
         res.status(200).send(response);
         await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+
+}
+
+//Success
+exports.removePetrolMergeJobDetailsByDpo = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { dpo_code, action } = req.body[0];
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (dpo_code == undefined || Array.isArray(dpo_code) == false || dpo_code.length === 0 || lic_code == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+            return;
+        } else {
+            let script = ``;
+            // ดัก petrol_merge_job_id เป็น array
+            let dpo_codeArr = (Array.isArray(dpo_code) ? dpo_code : [dpo_code]).filter(c => c != null && c !== '');
+            let dpo_codeIn = dpo_codeArr.map(c => `'${c}'`).join(', ');
+            script = `Delete from tbl_petrol_merge_job_info where dpo_code in (${dpo_codeIn});`
+
+            let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary.code) {
+                //debugger
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: 'ลบข้อมูลปั้มที่พ่วงงานกันได้สำเร็จ',
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body[0]), 'success', action[0].value);
+                return;
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+        const _lic = req.header('lic_code');
+        const _act = req.body?.[0]?.action?.[0] || {};
+        if (_lic && _act.id) {
+            await xglobal.action_logs(_lic, _act.id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body?.[0] || {}), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', _act.value);
+        }
         return;
     });
 
