@@ -225,7 +225,9 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 where tbl_petrol_merge_job_info.ptrl_merge_job_code = '${ptrl_merge_job_code}' 
                 AND tbl_petrol_merge_job_info.flag = '1'
-                AND tbl_ptrl.ptrl_flag = '1'`;
+                AND tbl_petrol_merge_job.petrol_merge_job_flag = '1'
+                AND tbl_ptrl.ptrl_flag = '1'
+                AND tbl_item.itm_flag = '1'`;
             }
             else {
                 script = `select 
@@ -253,7 +255,8 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 left join tbl_petrol tbl_ptrl on tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 where tbl_petrol_merge_job_info.flag = '1'
-                AND tbl_ptrl.ptrl_flag = '1'`;
+                AND tbl_ptrl.ptrl_flag = '1'
+                AND tbl_item.itm_flag = '1'`;
             }
 
             script += ` order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc`
