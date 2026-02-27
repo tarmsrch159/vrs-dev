@@ -61,7 +61,7 @@ exports.getDepotInformation = async (req, res, next) => {
             page_limit = 10000;
 
             if (dpo_code.toString().toUpperCase() != 'ALL') {
-                script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_city, dpo_country_code,
+                script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_country_code,
                 dpo_loading_minute, dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon,
                 tbl_depot.off_code, off_desc, tbl_depot.dpo_group_code, dpo_group_desc, tbl_depot.ist_dt, tbl_depot.mdf_dt, tbl_depot.rm_dt, tbl_depot.prov_code, 
                 tbl_depot.amph_code, tbl_depot.tamb_code, tbl_province.prov_desc, tbl_amphure.amph_desc, tbl_tambon.tamb_desc, dpo_flag 
@@ -74,7 +74,7 @@ exports.getDepotInformation = async (req, res, next) => {
                 where dpo_flag = '1' and tbl_depot.dpo_code = '${dpo_code}'`;
             }
             else {
-                script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_city, dpo_country_code,
+                script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_country_code,
                 dpo_loading_minute, dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon,
                 tbl_depot.off_code, off_desc, tbl_depot.dpo_group_code, dpo_group_desc, tbl_depot.ist_dt, tbl_depot.mdf_dt, tbl_depot.rm_dt, tbl_depot.prov_code, 
                 tbl_depot.amph_code, tbl_depot.tamb_code, tbl_province.prov_desc, tbl_amphure.amph_desc, tbl_tambon.tamb_desc, dpo_flag 
@@ -424,7 +424,6 @@ exports.addDepotInformation = async (req, res, next) => {
             dpo_short_desc,
             dpo_address,
             dpo_zip_code,
-            dpo_city,
             dpo_country_code,
             dpo_loading_minute,
             dpo_expenses_per_km,
@@ -440,8 +439,7 @@ exports.addDepotInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (dpo_number == undefined || dpo_desc == undefined || dpo_city == undefined
-            || dpo_short_desc == undefined || dpo_address == undefined || dpo_zip_code == undefined || dpo_country_code == undefined || dpo_loading_minute == undefined
+        if (dpo_number == undefined || dpo_desc == undefined || dpo_short_desc == undefined || dpo_address == undefined || dpo_zip_code == undefined || dpo_country_code == undefined || dpo_loading_minute == undefined
             || dpo_expenses_per_km == undefined || dpo_area == undefined || dpo_lat == undefined || dpo_lon == undefined || off_code == undefined || dpo_group_code == undefined
             || prov_code == undefined || amph_code == undefined || tamb_code == undefined || action == undefined) {
             let response = [{
@@ -478,10 +476,10 @@ exports.addDepotInformation = async (req, res, next) => {
 
             let dpo_code = 'dpo-' + moment().format('x');
             script = `insert into tbl_depot 
-            (dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_city, dpo_country_code, dpo_loading_minute,
+            (dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_country_code, dpo_loading_minute,
             dpo_expenses_per_km, dpo_area, dpo_lat, dpo_lon, off_code, dpo_group_code, prov_code, amph_code, tamb_code, dpo_flag, ist_dt) 
             values 
-            ('${dpo_code}', '${dpo_number}', '${dpo_desc}', '${dpo_short_desc}', '${dpo_address}', '${dpo_zip_code}', '${dpo_city}', 
+            ('${dpo_code}', '${dpo_number}', '${dpo_desc}', '${dpo_short_desc}', '${dpo_address}', '${dpo_zip_code}', 
             '${dpo_country_code}', ${dpo_loading_minute}, ${dpo_expenses_per_km}, 
             ${dpo_area}, ${dpo_lat}, ${dpo_lon}, '${off_code}', '${dpo_group_code}',
             '${prov_code}', '${amph_code}', '${tamb_code}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`

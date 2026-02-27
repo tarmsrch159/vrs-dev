@@ -303,7 +303,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                                 });
                                 dpo_idx = acc[key].data.length - 1;
                             } else {
-                                // เปรียบเทียบเอา ist_dt ที่เก่าที่สุด (เพราะ query เรียง desc → row ล่างคือเก่ากว่า)
+                                // เปรียบเทียบเอา ist_dt ที่เก่าที่สุด
                                 let existing = new Date(acc[key].data[dpo_idx].earliest_ist_dt);
                                 let current = new Date(curr.ist_dt);
                                 if (current < existing) {
