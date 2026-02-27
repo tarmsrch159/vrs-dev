@@ -22,7 +22,10 @@ exports.getItemUnitInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { itm_unit_code, action } = req.body[0];
+        let { itm_unit_code, page_index, page_limit, action } = req.body[0];
+        if (page_index > 0) {
+            page_index -= 1;
+        }
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_unit_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -51,19 +54,40 @@ exports.getItemUnitInformation = async (req, res, next) => {
                 where itm_unit_flag = '1'`;
             }
 
-            script += `  order by itm_unit_desc asc;`
+            script += `  order by itm_unit_desc asc`
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
-
+                    page_total = 0;
+                    rows_total = 0;
+                    if (itm_unit_code.toString().toUpperCase() != 'ALL') {
+                        script = `select ceil((ceil(count(itm_unit_code)) / ${page_limit})) as page_total, (count(itm_unit_code)) as rows_total 
+                        from tbl_item_unit 
+                        where itm_unit_flag = '1' and itm_unit_code = '${itm_unit_code}'`;
+                    }
+                    else {
+                        script = `select ceil((ceil(count(itm_unit_code)) / ${page_limit})) as page_total, (count(itm_unit_code)) as rows_total 
+                        from tbl_item_unit 
+                        where itm_unit_flag = '1'`;
+                    }
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                        }
+                    }
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

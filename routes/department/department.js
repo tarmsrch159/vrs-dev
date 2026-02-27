@@ -22,7 +22,15 @@ exports.getDepartmentInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { div_code, dep_code, action } = req.body[0];
+        let { div_code, dep_code, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
+
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (div_code == undefined || dep_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -74,11 +82,47 @@ exports.getDepartmentInformation = async (req, res, next) => {
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
+                    let page_total = 0;
+                    let rows_total = 0;
+                    script = ``
+                    if (dep_code.toString().toUpperCase() != 'ALL') {
+                        script = `select ceil((ceil(count(dep_code)) / ${page_limit})) as page_total, (count(dep_code)) as rows_total 
+                    from tbl_department 
+                    left join tbl_division on tbl_department.div_code = tbl_division.div_code 
+                    where div_flag = '1' and tbl_division.div_code = '${div_code}' and tbl_department.dep_code = '${dep_code}' and tbl_department.dep_flag = '1'`;
+                    }
+                    else {
+                        script = `select ceil((ceil(count(dep_code)) / ${page_limit})) as page_total, (count(dep_code)) as rows_total 
+                    from tbl_department 
+                    left join tbl_division on tbl_department.div_code = tbl_division.div_code 
+                    where div_flag = '1' and tbl_division.div_code = '${div_code}' and tbl_department.dep_flag = '1'`;
+                    }
+
+                    if (div_code.toString().toUpperCase() != 'ALL' && div_code.toString().toUpperCase() != '') {
+                        script += ` and tbl_department.div_code = '${div_code}'`
+                    }
+
+                    if (dep_code.toString().toUpperCase() != 'ALL' && dep_code.toString().toUpperCase() != '') {
+                        script += ` and tbl_department.dep_code = '${dep_code}'`
+                    }
+
+
+
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                        }
+                    }
+
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

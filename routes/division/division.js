@@ -21,7 +21,8 @@ exports.getDivisionInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { div_code, action } = req.body[0];
+        let { div_code, page_index, page_limit, action } = req.body[0];
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (div_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{

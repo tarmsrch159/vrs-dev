@@ -40,9 +40,11 @@ exports.getPetrolInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { ptrl_code, off_code, ptrl_group_code, search, page_index, page_limit, action, auto_order } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ptrl_code == undefined || off_code == undefined || ptrl_group_code == undefined || lic_code == undefined
-            || search == undefined || page_index == undefined || page_limit == undefined || action == undefined) {
+            || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
