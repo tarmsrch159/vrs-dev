@@ -258,8 +258,9 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 AND tbl_ptrl.ptrl_flag = '1'`;
             }
 
-            script += ` order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc`
-            console.log(script)
+            script += ` 
+            order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc
+            `
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
@@ -297,9 +298,17 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                                 acc[key].data.push({
                                     dpo_code: curr.dpo_code,
                                     dpo_desc: curr.dpo_desc,
+                                    earliest_ist_dt: curr.ist_dt, // เก็บ ist_dt เก่าสุดของ dpo_code นี้ไว้ใช้เรียงลำดับ (ตอนคลังนี้ถูกเพิ่มครั้งแรก)
                                     itm_data: []
                                 });
                                 dpo_idx = acc[key].data.length - 1;
+                            } else {
+                                // เปรียบเทียบเอา ist_dt ที่เก่าที่สุด (เพราะ query เรียง desc → row ล่างคือเก่ากว่า)
+                                let existing = new Date(acc[key].data[dpo_idx].earliest_ist_dt);
+                                let current = new Date(curr.ist_dt);
+                                if (current < existing) {
+                                    acc[key].data[dpo_idx].earliest_ist_dt = curr.ist_dt;
+                                }
                             }
 
                             if (curr.itm_code && curr.itm_desc !== "") {
@@ -316,6 +325,13 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
 
                         return acc;
                     }, {}));
+
+                    // เรียง data (dpo_code) ให้คลังสินค้าที่ถูกเพิ่มล่าสุดอยู่บนสุด (ใช้ ist_dt ที่เก่าสุดของ dpo_code = ตอนที่คลังถูกเพิ่มครั้งแรก)
+                    groupedData.forEach(group => {
+                        group.data.sort((a, b) => new Date(b.earliest_ist_dt) - new Date(a.earliest_ist_dt));
+                        // ลบ earliest_ist_dt ออกเพราะไม่ต้องส่งไป client
+                        group.data.forEach(d => delete d.earliest_ist_dt);
+                    });
 
                     let total_item = groupedData.length;
                     let total_page = Math.ceil(total_item / limit);
