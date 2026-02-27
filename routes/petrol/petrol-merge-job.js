@@ -218,16 +218,15 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 tbl_petrol_merge_job_info.mdf_dt,
                 tbl_petrol_merge_job_info.rm_dt 
                 from tbl_petrol_merge_job_info
-                left join tbl_depot on tbl_petrol_merge_job_info.dpo_code = tbl_depot.dpo_code
-                left join tbl_item on tbl_petrol_merge_job_info.itm_code = tbl_item.itm_code    
+                left join tbl_depot on tbl_petrol_merge_job_info.dpo_code = tbl_depot.dpo_code and tbl_depot.dpo_flag = '1'
+                left join tbl_item on tbl_petrol_merge_job_info.itm_code = tbl_item.itm_code and tbl_item.itm_flag = '1'    
                 left join tbl_petrol_merge_job on tbl_petrol_merge_job_info.ptrl_merge_job_code = tbl_petrol_merge_job.ptrl_merge_job_code
                 left join tbl_petrol tbl_ptrl on tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 where tbl_petrol_merge_job_info.ptrl_merge_job_code = '${ptrl_merge_job_code}' 
                 AND tbl_petrol_merge_job_info.flag = '1'
                 AND tbl_petrol_merge_job.petrol_merge_job_flag = '1'
-                AND tbl_ptrl.ptrl_flag = '1'
-                AND tbl_item.itm_flag = '1'`;
+                AND tbl_ptrl.ptrl_flag = '1'`;
             }
             else {
                 script = `select 
@@ -249,18 +248,18 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                 tbl_petrol_merge_job_info.mdf_dt,
                 tbl_petrol_merge_job_info.rm_dt 
                 from tbl_petrol_merge_job_info
-                left join tbl_depot on tbl_petrol_merge_job_info.dpo_code = tbl_depot.dpo_code
-                left join tbl_item on tbl_petrol_merge_job_info.itm_code = tbl_item.itm_code
+                left join tbl_depot on tbl_petrol_merge_job_info.dpo_code = tbl_depot.dpo_code and tbl_depot.dpo_flag = '1'
+                left join tbl_item on tbl_petrol_merge_job_info.itm_code = tbl_item.itm_code and tbl_item.itm_flag = '1'
                 left join tbl_petrol_merge_job on tbl_petrol_merge_job_info.ptrl_merge_job_code = tbl_petrol_merge_job.ptrl_merge_job_code
                 left join tbl_petrol tbl_ptrl on tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
                 left join tbl_petrol tbl_merge_ptrl on tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code -- Join 2 ตาราง tbl_petrol และ tbl_petrol_merge_job
-                where tbl_petrol_merge_job_info.flag = '1' AND '0' = '0'
-                AND tbl_ptrl.ptrl_flag = '1'
-                AND tbl_item.itm_flag = '1'`;
+                where tbl_petrol_merge_job_info.flag = '1'
+                AND tbl_petrol_merge_job.petrol_merge_job_flag = '1' 
+                AND tbl_ptrl.ptrl_flag = '1'`;
             }
 
             script += ` order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc`
-
+            console.log(script)
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
@@ -291,7 +290,8 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                         }
 
                         // เอา dpo_code และ itm_code จัดเข้ากลุ่มย่อย
-                        if (curr.dpo_code) {
+                        // (ดักไว้ว่าถ้าเชื่อมไม่เจอ = ค่าว่าง ก็ไม่ต้อง push เข้าไป)
+                        if (curr.dpo_code && curr.dpo_desc !== "") {
                             let dpo_idx = acc[key].data.findIndex(d => d.dpo_code === curr.dpo_code);
                             if (dpo_idx === -1) {
                                 acc[key].data.push({
@@ -302,7 +302,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                                 dpo_idx = acc[key].data.length - 1;
                             }
 
-                            if (curr.itm_code) {
+                            if (curr.itm_code && curr.itm_desc !== "") {
                                 let itm_idx = acc[key].data[dpo_idx].itm_data.findIndex(i => i.itm_code === curr.itm_code);
                                 if (itm_idx === -1) {
                                     acc[key].data[dpo_idx].itm_data.push({
@@ -333,6 +333,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
                     res.status(200).send(response);
                     return;
                 } else {
+
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
