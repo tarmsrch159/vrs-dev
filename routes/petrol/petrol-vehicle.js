@@ -117,7 +117,7 @@ exports.getPetrolVehicleInformation = async (req, res, next) => {
                 script += ` and tbl_petrol.ptrl_code = '${ptrl_code}' `
             }
 
-            script += `  order by veh_license_number asc `
+            script += `  order by tbl_petrol_vehicle.ist_dt desc `
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

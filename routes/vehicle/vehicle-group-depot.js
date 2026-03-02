@@ -80,7 +80,7 @@ exports.getVehicleGroupDepotInformation = async (req, res, next) => {
                 script += ` and tbl_vehicle_group_depot.dpo_code = '${dpo_code}'`
             }
 
-            script += `  order by tbl_depot.dpo_number asc`
+            script += `  order by tbl_vehicle_group_depot.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

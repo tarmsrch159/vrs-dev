@@ -75,7 +75,7 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
                 script += ` and v.veh_type_code = '${veh_type_code}'`;
             }
 
-            script += ` order by v.veh_type_desc asc, c.compartment_no asc`
+            script += ` order by v.ist_dt desc, c.compartment_no asc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
@@ -270,7 +270,7 @@ exports.getCompartmentItem = async (req, res, next) => {
                 script += ` and v.veh_type_code = '${veh_type_code}'`;
             }
 
-            script += ` order by v.veh_type_desc asc, c.compartment_no asc;`
+            script += ` order by v.ist_dt desc, c.compartment_no asc;`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

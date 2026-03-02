@@ -109,7 +109,7 @@ exports.getDriverInformation = async (req, res, next) => {
                 script += `tbl_driver.off_code = '${off_code}' `
             }
 
-            script += `order by dver_name asc`
+            script += ` order by tbl_driver.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

@@ -103,7 +103,7 @@ exports.getEmployeeInformation = async (req, res, next) => {
                 script += ` and tbl_employee.off_code = '${off_code}'`
             }
 
-            script += ` order by emp_name asc`
+            script += ` order by tbl_employee.ist_dt desc`
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

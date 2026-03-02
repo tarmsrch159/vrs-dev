@@ -104,7 +104,7 @@ exports.getPetrolDriverCardTypeInformation = async (req, res, next) => {
                 script += ` and tbl_petrol.ptrl_code = '${ptrl_code}' `
             }
 
-            script += `  order by tbl_driver_card_type.dver_card_type_desc asc`
+            script += `  order by tbl_petrol_driver_card_type.ist_dt desc`
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
             console.log(script);
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

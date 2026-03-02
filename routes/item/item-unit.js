@@ -54,7 +54,7 @@ exports.getItemUnitInformation = async (req, res, next) => {
                 where itm_unit_flag = '1'`;
             }
 
-            script += `  order by itm_unit_desc asc`
+            script += `  order by tbl_item_unit.ist_dt desc`
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

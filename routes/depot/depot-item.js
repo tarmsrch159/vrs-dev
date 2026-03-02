@@ -130,7 +130,7 @@ exports.getDepotItemInformation = async (req, res, next) => {
                 script += ` and tbl_depot.dpo_code = '${dpo_code}' `
             }
 
-            script += `  order by itm_desc asc `;
+            script += `  order by tbl_depot_item.ist_dt desc `;
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

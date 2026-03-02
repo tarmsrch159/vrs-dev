@@ -141,7 +141,7 @@ exports.getVehicleInformation = async (req, res, next) => {
                 script += ` and tbl_vehicle.off_code = '${off_code}'`
             }
 
-            script += ` order by veh_number asc`
+            script += ` order by tbl_vehicle.ist_dt desc`
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

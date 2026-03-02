@@ -54,7 +54,7 @@ exports.getItemTypeInformation = async (req, res, next) => {
                 where itm_type_flag = '1'`;
             }
 
-            script += `  order by itm_type_desc asc`
+            script += `  order by tbl_item_type.ist_dt desc`
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

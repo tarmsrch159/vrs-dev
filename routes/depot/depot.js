@@ -106,7 +106,7 @@ exports.getDepotInformation = async (req, res, next) => {
                 or dpo_zip_code like '%${search}%')`
             }
 
-            script += ` order by dpo_number asc `
+            script += ` order by ist_dt desc `
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

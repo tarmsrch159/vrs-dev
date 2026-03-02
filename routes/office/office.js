@@ -89,9 +89,10 @@ exports.getOfficeInformation = async (req, res, next) => {
                 and tbl_office.off_amph_code = tbl_amphure.amph_code
                 left join tbl_tambon on tbl_office.off_amph_code = tbl_tambon.amph_code
                 and tbl_office.off_tamb_code = tbl_tambon.tamb_code 
-                where off_flag = '1' order by off_code asc`;
+                where off_flag = '1' `;
             }
 
+            script += ` order by tbl_office.ist_dt desc `
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

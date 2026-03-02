@@ -76,6 +76,9 @@ exports.getDepartmentInformation = async (req, res, next) => {
                 and tbl_division.div_flag = '1' where div_flag = '1' and tbl_division.div_code = '${div_code}' and tbl_department.dep_flag = '1'`;
             }
 
+            script += ` order by tbl_department.ist_dt desc`
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
+
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger

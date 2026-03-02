@@ -113,7 +113,7 @@ exports.getPetrolInformation = async (req, res, next) => {
                 or ptrl_zip_code like '%${search}%')`
             }
 
-            script += ` order by ptrl_number asc `
+            script += ` order by tbl_petrol.ist_dt desc `
             script += ` limit ${page_limit} offset (${page_index}*${page_limit});`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
@@ -157,6 +157,8 @@ exports.getPetrolInformation = async (req, res, next) => {
                         or ptrl_address like '%${search}%' 
                         or ptrl_zip_code like '%${search}%')`
                     }
+
+
 
                     let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
 

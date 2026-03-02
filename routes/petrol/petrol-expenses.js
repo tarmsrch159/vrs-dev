@@ -85,7 +85,7 @@ exports.getPetrolExpensesInformation = async (req, res, next) => {
                 script += ` and tbl_petrol_expenses.ptrl_code = '${ptrl_code}' `
             }
 
-            script += ` order by ptrl_expenses_desc asc `
+            script += ` order by tbl_petrol_expenses.ist_dt desc `
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

@@ -56,9 +56,9 @@ exports.getVehicleUnavailableTypeInformation = async (req, res, next) => {
                 where veh_unavailable_type_flag = '1'`;
             }
 
-            script += `  order by veh_unavailable_type_desc asc`
+            script += `  order by tbl_vehicle_unavailable_type.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
-
+            console.log(script);
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger

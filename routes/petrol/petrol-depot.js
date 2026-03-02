@@ -129,7 +129,7 @@ exports.getPetrolDepotInformation = async (req, res, next) => {
                 script += ` and tbl_petrol.ptrl_code = '${ptrl_code}' `;
             }
 
-            script += `  order by dpo_short_desc asc`;
+            script += `  order by tbl_petrol_depot.ist_dt desc`;
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(

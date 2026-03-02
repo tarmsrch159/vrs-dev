@@ -75,7 +75,7 @@ exports.getDriverLeaveInformation = async (req, res, next) => {
 
             script += ` and tbl_driver_leave.dver_leave_date >= '${start_date}' 
             and tbl_driver_leave.dver_leave_date <= '${end_date}' `
-            script += ` order by dver_leave_type_desc asc `
+            script += ` order by tbl_driver_leave.ist_dt desc `
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

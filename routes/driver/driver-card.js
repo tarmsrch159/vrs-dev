@@ -65,7 +65,7 @@ exports.getDriverCardInformation = async (req, res, next) => {
                 on tbl_driver_card.dver_card_type_code = tbl_driver_card_type.dver_card_type_code`;
             }
 
-            script += ` order by dver_card_number asc`
+            script += ` order by tbl_driver_card.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

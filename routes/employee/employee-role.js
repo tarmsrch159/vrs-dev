@@ -52,7 +52,7 @@ exports.getEmployeeRoleInformation = async (req, res, next) => {
                 ist_dt, mdf_dt, rm_dt from tbl_employee_role where emp_role_flag = '1'`;
             }
 
-            script += ` order by emp_role_code asc`
+            script += ` order by tbl_employee_role.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

@@ -53,7 +53,7 @@ exports.getDriverLeaveTypeInformation = async (req, res, next) => {
                 ist_dt, mdf_dt, rm_dt from tbl_driver_leave_type where dver_leave_type_flag = '1' `;
             }
 
-            script += ` order by dver_leave_type_desc asc`
+            script += ` order by tbl_driver_leave_type.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

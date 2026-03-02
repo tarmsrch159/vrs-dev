@@ -70,7 +70,7 @@ exports.getDriverCardLicenseInformation = async (req, res, next) => {
                 script += ` and tbl_driver_card_license.dver_code = '${dver_code}' `
             }
 
-            script += ` order by dver_card_license_number asc`
+            script += ` order by tbl_driver_card_license.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

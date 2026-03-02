@@ -79,7 +79,7 @@ exports.getVehicleUnavailableInformation = async (req, res, next) => {
 
             script += ` and tbl_vehicle_unavailable.veh_unavailable_date >= '${start_date}' 
             and tbl_vehicle_unavailable.veh_unavailable_date <= '${end_date}' `
-            script += ` order by veh_unavailable_type_desc asc`
+            script += ` order by tbl_vehicle_unavailable.ist_dt desc`
             script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

@@ -87,7 +87,7 @@ exports.getVehicleCompartmentInformation = async (req, res, next) => {
                 where veh_compartment_flag = '1'`;
             }
 
-            script += ` and tbl_vehicle_compartment.veh_code = '${veh_code}' order by veh_compartment_number asc`
+            script += ` and tbl_vehicle_compartment.veh_code = '${veh_code}' order by tbl_vehicle_compartment.ist_dt desc`
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

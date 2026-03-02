@@ -61,7 +61,7 @@ exports.getDepotGroupInformation = async (req, res, next) => {
                 script += ` and tbl_depot_group.off_code = '${off_code}' `
             }
 
-            script += `  order by dpo_group_desc asc;`
+            script += `  order by ist_dt desc;`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
