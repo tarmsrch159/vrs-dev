@@ -23,7 +23,14 @@ exports.getVehicleCompartmentLevelInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { veh_compartment_code, veh_compartment_level_code, action } = req.body[0];
+        let { veh_compartment_code, veh_compartment_level_code, action, page_inde, page_limit } = req.body[0];
+        page_inde = page_inde == undefined ? 1 : page_inde;
+        page_limit = page_limit == undefined ? 10 : page_limit;
+
+        if (page_inde > 0) {
+            page_inde -= 1
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (veh_compartment_level_code == undefined || veh_compartment_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -56,7 +63,8 @@ exports.getVehicleCompartmentLevelInformation = async (req, res, next) => {
                 script += ` and tbl_vehicle_compartment_level.veh_compartment_code = '${veh_compartment_code}' `
             }
 
-            script += `  order by veh_compartment_level_number asc;`
+            script += `  order by veh_compartment_level_number asc`
+            script += ` offset (${page_inde}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
@@ -64,11 +72,44 @@ exports.getVehicleCompartmentLevelInformation = async (req, res, next) => {
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    if (veh_compartment_level_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        ceil((ceil(count(veh_compartment_level_code)) / ${page_limit})) as page_total, 
+                        count(*) as rows_total
+                        from tbl_vehicle_compartment_level 
+                        where veh_compartment_level_flag = '1' and veh_compartment_level_code = '${veh_compartment_level_code}'`;
+                    }
+                    else {
+                        script = `select 
+                        ceil((ceil(count(veh_compartment_level_code)) / ${page_limit})) as page_total, 
+                        count(*) as rows_total
+                        from tbl_vehicle_compartment_level 
+                        where veh_compartment_level_flag = '1'`;
+                    }
+
+                    if (veh_compartment_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_vehicle_compartment_level.veh_compartment_code = '${veh_compartment_code}' `
+                    }
+
+                    let tbl_temporary_page = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_page.code) {
+                        if (tbl_temporary_page.data.length > 0) {
+                            tbl_temporary_page.data = JSON.parse(JSON.stringify(tbl_temporary_page.data).replace(/\:null/gi, "\:\"\""));
+                            page_total = parseInt(tbl_temporary_page.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_page.data[0].rows_total);
+                        }
+                    }
+
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -80,6 +121,8 @@ exports.getVehicleCompartmentLevelInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

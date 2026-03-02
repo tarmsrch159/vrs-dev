@@ -23,7 +23,14 @@ exports.getVehicleCompartmentInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { veh_code, veh_compartment_code, action } = req.body[0];
+        let { veh_code, veh_compartment_code, action, page_index, page_limit } = req.body[0];
+        page_index = page_index == undefined ? 1 : page_index;
+        page_limit = page_limit == undefined ? 10 : page_limit;
+
+        if (page_index > 0) {
+            page_index -= 1
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (veh_compartment_code == undefined || lic_code == undefined || veh_code == undefined || action == undefined) {
             let response = [{
@@ -40,23 +47,39 @@ exports.getVehicleCompartmentInformation = async (req, res, next) => {
 
             let script = ``;
             if (veh_compartment_code.toString().toUpperCase() != 'ALL') {
-                script = `select veh_compartment_code, veh_compartment_number, veh_compartment_flag,
-                (select count(veh_compartment_level_code) from tbl_vehicle_compartment_level 
+                script = `select 
+                veh_compartment_code, 
+                veh_compartment_number, 
+                veh_compartment_flag,
+                (select count(veh_compartment_level_code) 
+                from tbl_vehicle_compartment_level 
                 where veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code and veh_compartment_level_flag = '1') :: integer as level_count,
-                (select case when max(veh_compartment_level) is null then 0 else max(veh_compartment_level) end as veh_compartment_level from tbl_vehicle_compartment_level 
+                (select case when max(veh_compartment_level) is null then 0 else max(veh_compartment_level) end as veh_compartment_level 
+                from tbl_vehicle_compartment_level 
                 where veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code and veh_compartment_level_flag = '1') as level_maximum_capacity,
-                tbl_vehicle_compartment.ist_dt, tbl_vehicle_compartment.mdf_dt, tbl_vehicle_compartment.rm_dt, 
-                (select array_to_string(array_agg(veh_compartment_level),',', '*') from tbl_vehicle_compartment_level where tbl_vehicle_compartment_level.veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code 
+                tbl_vehicle_compartment.ist_dt, 
+                tbl_vehicle_compartment.mdf_dt, 
+                tbl_vehicle_compartment.rm_dt, 
+                (select array_to_string(array_agg(veh_compartment_level),',', '*') 
+                from tbl_vehicle_compartment_level 
+                where tbl_vehicle_compartment_level.veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code 
                 and veh_compartment_level_flag = '1') as level_capacity 
                 from tbl_vehicle_compartment 
                 where veh_compartment_flag = '1' and tbl_vehicle_compartment.veh_compartment_code = '${veh_compartment_code}'`;
             } else {
-                script = `select veh_compartment_code, veh_compartment_number, veh_compartment_flag,
-                (select count(veh_compartment_level_code) from tbl_vehicle_compartment_level 
+                script = `select 
+                veh_compartment_code, 
+                veh_compartment_number, 
+                veh_compartment_flag,
+                (select count(veh_compartment_level_code) 
+                from tbl_vehicle_compartment_level 
                 where veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code and veh_compartment_level_flag = '1') :: integer as level_count,
-                (select case when max(veh_compartment_level) is null then 0 else max(veh_compartment_level) end as veh_compartment_level from tbl_vehicle_compartment_level 
+                (select case when max(veh_compartment_level) is null then 0 else max(veh_compartment_level) end as veh_compartment_level 
+                from tbl_vehicle_compartment_level 
                 where veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code and veh_compartment_level_flag = '1') as level_maximum_capacity,
-                tbl_vehicle_compartment.ist_dt, tbl_vehicle_compartment.mdf_dt, tbl_vehicle_compartment.rm_dt, 
+                tbl_vehicle_compartment.ist_dt, 
+                tbl_vehicle_compartment.mdf_dt, 
+                tbl_vehicle_compartment.rm_dt, 
                 (select array_to_string(array_agg(veh_compartment_level),',', '*') from tbl_vehicle_compartment_level 
                 where tbl_vehicle_compartment_level.veh_compartment_code = tbl_vehicle_compartment.veh_compartment_code 
                 and veh_compartment_level_flag = '1') as level_capacity 
@@ -64,18 +87,47 @@ exports.getVehicleCompartmentInformation = async (req, res, next) => {
                 where veh_compartment_flag = '1'`;
             }
 
-            script += ` and tbl_vehicle_compartment.veh_code = '${veh_code}' order by veh_compartment_number asc;`
+            script += ` and tbl_vehicle_compartment.veh_code = '${veh_code}' order by veh_compartment_number asc`
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    if (veh_compartment_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                         ceil((ceil(count(veh_compartment_code)) / ${page_limit})) as page_total, 
+                        count(*) as rows_total
+                        from tbl_vehicle_compartment 
+                        where veh_compartment_flag = '1' and tbl_vehicle_compartment.veh_compartment_code = '${veh_compartment_code}'`;
+                    } else {
+                        script = `select 
+                        ceil((ceil(count(veh_compartment_code)) / ${page_limit})) as page_total, 
+                        count(*) as rows_total
+                        from tbl_vehicle_compartment 
+                        where veh_compartment_flag = '1'`;
+                    }
+
+                    let tbl_temporary_page = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_page.code) {
+                        if (tbl_temporary_page.data.length > 0) {
+                            tbl_temporary_page.data = JSON.parse(JSON.stringify(tbl_temporary_page.data).replace(/\:null/gi, "\:\"\""));
+                            page_total = parseInt(tbl_temporary_page.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_page.data[0].rows_total);
+                        }
+                    }
+
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -88,6 +140,8 @@ exports.getVehicleCompartmentInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

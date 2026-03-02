@@ -31,7 +31,14 @@ exports.getVehicleUnavailableInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { veh_unavailable_code, veh_code, start_date, end_date, action } = req.body[0];
+        let { veh_unavailable_code, veh_code, start_date, end_date, action, page_index, page_limit } = req.body[0];
+        page_limit = page_limit == undefined ? 10 : page_limit;
+        page_index = page_index == undefined ? 1 : page_index;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (veh_unavailable_code == undefined || veh_code == undefined || start_date == undefined || end_date == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -72,19 +79,54 @@ exports.getVehicleUnavailableInformation = async (req, res, next) => {
 
             script += ` and tbl_vehicle_unavailable.veh_unavailable_date >= '${start_date}' 
             and tbl_vehicle_unavailable.veh_unavailable_date <= '${end_date}' `
-            script += ` order by veh_unavailable_type_desc asc;`
+            script += ` order by veh_unavailable_type_desc asc`
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    if (veh_unavailable_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(tbl_vehicle_unavailable.veh_unavailable_code)::numeric / ${page_limit}) as page_total
+                        from tbl_vehicle_unavailable 
+                        left join tbl_vehicle 
+                        on tbl_vehicle_unavailable.veh_code = tbl_vehicle.veh_code
+                        left join tbl_vehicle_unavailable_type on tbl_vehicle_unavailable.veh_unavailable_type_code = tbl_vehicle_unavailable_type.veh_unavailable_type_code
+                        where tbl_vehicle_unavailable.veh_unavailable_flag = '1' and tbl_vehicle_unavailable.veh_unavailable_code = '${veh_unavailable_code}'`;
+                    }
+                    else {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(tbl_vehicle_unavailable.veh_unavailable_code)::numeric / ${page_limit}) as page_total
+                        from tbl_vehicle_unavailable 
+                        left join tbl_vehicle 
+                        on tbl_vehicle_unavailable.veh_code = tbl_vehicle.veh_code
+                        left join tbl_vehicle_unavailable_type on tbl_vehicle_unavailable.veh_unavailable_type_code = tbl_vehicle_unavailable_type.veh_unavailable_type_code
+                        where tbl_vehicle_unavailable.veh_unavailable_flag = '1'`;
+                    }
+
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            tbl_temporary_count.data = JSON.parse(JSON.stringify(tbl_temporary_count.data).replace(/\:null/gi, "\:\"\""));
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                        }
+                    }
 
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -96,6 +138,8 @@ exports.getVehicleUnavailableInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

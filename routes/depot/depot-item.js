@@ -162,6 +162,10 @@ exports.getDepotItemInformation = async (req, res, next) => {
                         where tbl_depot_item.dpo_item_flag = '1' and dpo_item_code is not null `
                     }
 
+                    if (dpo_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_depot.dpo_code = '${dpo_code}' `
+                    }
+
                     let tbl_temporary_total = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
                     if (!tbl_temporary_total.code) {
                         page_total = parseInt(tbl_temporary_total.data[0].page_total);

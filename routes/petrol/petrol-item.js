@@ -39,6 +39,7 @@ exports.getPetrolItemInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { itm_code, ptrl_code, action, page_index, page_limit } = req.body[0];
 
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_code == undefined || ptrl_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{

@@ -25,7 +25,13 @@ exports.getPetrolExpensesInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { ptrl_expenses_code, ptrl_code, action } = req.body[0];
+        let { ptrl_expenses_code, ptrl_code, page_index, page_limit, action } = req.body[0];
+        page_index = page_index || 1;
+        page_limit = page_limit || 10;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ptrl_expenses_code == undefined || lic_code == undefined || ptrl_code == undefined || action == undefined) {
             let response = [{
@@ -79,19 +85,47 @@ exports.getPetrolExpensesInformation = async (req, res, next) => {
                 script += ` and tbl_petrol_expenses.ptrl_code = '${ptrl_code}' `
             }
 
-            script += ` order by ptrl_expenses_desc asc;`
-
+            script += ` order by ptrl_expenses_desc asc `
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+                    let script = ``
+                    if (ptrl_expenses_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        ceil((ceil(count(ptrl_expenses_code)) / ${page_limit})) as page_total,
+                        count(ptrl_expenses_code) as rows_total 
+                        from tbl_petrol
+                        left join tbl_petrol_expenses on tbl_petrol.ptrl_code = tbl_petrol_expenses.ptrl_code 
+                        where tbl_petrol_expenses.ptrl_expenses_flag = '1' and tbl_petrol_expenses.ptrl_expenses_code is not null 
+                        and tbl_petrol_expenses.ptrl_expenses_code = '${ptrl_expenses_code}' `;
+                    }
+                    else {
+                        script = `select 
+                        ceil((ceil(count(ptrl_expenses_code)) / ${page_limit})) as page_total,
+                        count(ptrl_expenses_code) as rows_total 
+                        from tbl_petrol
+                        left join tbl_petrol_expenses on tbl_petrol.ptrl_code = tbl_petrol_expenses.ptrl_code 
+                        where tbl_petrol_expenses.ptrl_expenses_flag = '1' and tbl_petrol_expenses.ptrl_expenses_code is not null `;
+                    }
+
+                    let tbl_temporary_total = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_total.code) {
+                        page_total = parseInt(tbl_temporary_total.data[0].page_total);
+                        rows_total = parseInt(tbl_temporary_total.data[0].rows_total);
+                    }
 
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -160,7 +194,7 @@ exports.removePetrolExpenses = async (req, res, next) => {
         } else {
 
             let script = ``;
-            script = `update tbl_petrol_expenses set ptrl_expenses_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' where ptrl_expenses_code = '${ptrl_expenses_code}';`
+            script = `update tbl_petrol_expenses set ptrl_expenses_flag = '0', rm_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}' where ptrl_expenses_code = '${ptrl_expenses_code}'; `
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
@@ -237,11 +271,11 @@ exports.setPetrolExpensesInformation = async (req, res, next) => {
 
             let script = ``;
             script = `update tbl_petrol_expenses set
-            ptrl_expenses = ${ptrl_expenses}, 
-            ptrl_expenses_desc = '${ptrl_expenses_desc}',
-            ptrl_code = '${ptrl_code}', 
-            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-            where ptrl_expenses_code = '${ptrl_expenses_code}';`
+                    ptrl_expenses = ${ptrl_expenses},
+                    ptrl_expenses_desc = '${ptrl_expenses_desc}',
+                        ptrl_code = '${ptrl_code}',
+                        mdf_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}' 
+            where ptrl_expenses_code = '${ptrl_expenses_code}'; `
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
@@ -315,7 +349,7 @@ exports.addPetrolExpensesInformation = async (req, res, next) => {
         } else {
 
             let script = ``;
-            script = `select ptrl_expenses_code from tbl_petrol_expenses where (ptrl_expenses_desc = '${ptrl_expenses_desc}') and tbl_petrol_expenses.ptrl_code = '${ptrl_code}' and ptrl_expenses_flag = '1';`
+            script = `select ptrl_expenses_code from tbl_petrol_expenses where(ptrl_expenses_desc = '${ptrl_expenses_desc}') and tbl_petrol_expenses.ptrl_code = '${ptrl_code}' and ptrl_expenses_flag = '1'; `
             let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary0.code) {
                 if (tbl_temporary0.data.length > 0) {
@@ -334,9 +368,9 @@ exports.addPetrolExpensesInformation = async (req, res, next) => {
             }
 
             let ptrl_expenses_code = 'pexp-' + moment().format('x');
-            script = `insert into tbl_petrol_expenses 
-            (ptrl_expenses_code, ptrl_expenses_desc, ptrl_code, ptrl_expenses, ptrl_expenses_flag, ist_dt) values 
-            ('${ptrl_expenses_code}', '${ptrl_expenses_desc}', '${ptrl_code}', ${ptrl_expenses}, '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`
+            script = `insert into tbl_petrol_expenses
+                        (ptrl_expenses_code, ptrl_expenses_desc, ptrl_code, ptrl_expenses, ptrl_expenses_flag, ist_dt) values
+                            ('${ptrl_expenses_code}', '${ptrl_expenses_desc}', '${ptrl_code}', ${ptrl_expenses}, '1', '${moment().format('YYYY - MM - DD HH: mm: ss')}'); `
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
