@@ -39,6 +39,7 @@ exports.getPetrolItemInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { itm_code, ptrl_code, action, page_index, page_limit } = req.body[0];
 
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_code == undefined || ptrl_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -79,15 +80,17 @@ exports.getPetrolItemInformation = async (req, res, next) => {
                     tbi.itm_icon,
                     tbi.itm_image,
                     tbi.itm_material_number,
-                    tbpi.itm_merge
+                    tbpi.itm_merge,
+                    tbpi.ist_dt,
+                    tbpi.mdf_dt,
+                    tbpi.rm_dt
                 FROM tbl_petrol_item tbpi
                 LEFT JOIN tbl_item tbi on tbpi.itm_code = tbi.itm_code
                 LEFT JOIN tbl_item_type tit on tbi.itm_type_code = tit.itm_type_code 
                 LEFT JOIN tbl_item_unit tui on tbi.itm_unit_code = tui.itm_unit_code 
                 WHERE tbpi.ptrl_item_flag = '1' ${wh}
             `;
-            let pageLimit = `order by tbi.itm_desc asc limit ${limit} offset ${offset}`;
-            // console.log(script);
+            let pageLimit = `order by tbpi.ist_dt desc limit ${limit} offset ${offset}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script + pageLimit, config.connectionString());
             if (!tbl_temporary.code) {

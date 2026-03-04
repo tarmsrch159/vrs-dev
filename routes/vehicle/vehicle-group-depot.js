@@ -28,7 +28,14 @@ exports.getVehicleGroupDepotInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { veh_group_code, dpo_code, off_code, action } = req.body[0];
+        let { veh_group_code, dpo_code, off_code, action, page_index, page_limit } = req.body[0];
+        page_limit = page_limit == undefined ? 10 : page_limit;
+        page_index = page_index == undefined ? 1 : page_index;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (veh_group_code == undefined || dpo_code == undefined || off_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -73,19 +80,65 @@ exports.getVehicleGroupDepotInformation = async (req, res, next) => {
                 script += ` and tbl_vehicle_group_depot.dpo_code = '${dpo_code}'`
             }
 
-            script += `  order by tbl_depot.dpo_number asc;`
+            script += `  order by tbl_vehicle_group_depot.ist_dt desc`
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    if (veh_group_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(veh_group_depot_code)::numeric / ${page_limit}) as page_total
+                        from tbl_vehicle_group 
+                        left join tbl_office on tbl_vehicle_group.off_code = tbl_office.off_code
+                        left join tbl_vehicle_group_depot on tbl_vehicle_group.veh_group_code = tbl_vehicle_group_depot.veh_group_code 
+                        left join tbl_depot on tbl_vehicle_group_depot.dpo_code = tbl_depot.dpo_code
+                        where veh_group_flag = '1' and veh_group_depot_flag = '1' and tbl_vehicle_group_depot.veh_group_depot_code is not null and tbl_vehicle_group_depot.veh_group_code = '${veh_group_code}' `;
+                    }
+                    else {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(veh_group_depot_code)::numeric / ${page_limit}) as page_total
+                        from tbl_vehicle_group 
+                        left join tbl_office on tbl_vehicle_group.off_code = tbl_office.off_code
+                        left join tbl_vehicle_group_depot on tbl_vehicle_group.veh_group_code = tbl_vehicle_group_depot.veh_group_code 
+                        left join tbl_depot on tbl_vehicle_group_depot.dpo_code = tbl_depot.dpo_code
+                        where veh_group_flag = '1' and veh_group_depot_flag = '1' and tbl_vehicle_group_depot.veh_group_depot_code is not null `;
+                    }
+
+                    if (off_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_vehicle_group.off_code = '${off_code}'`
+                    }
+
+                    if (dpo_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_vehicle_group_depot.dpo_code = '${dpo_code}'`
+                    }
+
+
+                    let tbl_temporary_page = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_page.code) {
+                        if (tbl_temporary_page.data.length > 0) {
+                            tbl_temporary_page.data = JSON.parse(JSON.stringify(tbl_temporary_page.data).replace(/\:null/gi, "\:\"\""));
+                            page_total = parseInt(tbl_temporary_page.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_page.data[0].rows_total);
+                        }
+                    }
+
+
 
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -97,6 +150,8 @@ exports.getVehicleGroupDepotInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

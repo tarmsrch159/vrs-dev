@@ -27,7 +27,13 @@ exports.getDriverCardLicenseInformation = async (req, res, next) => {
 
         let lic_code = req.header('lic_code');
         let { dver_code, dver_card_license_code } = req.query;
-        let { action } = req.body[0];
+        let { action, page_index, page_limit } = req.body[0];
+        page_limit = page_limit == undefined ? 10 : page_limit;
+        page_index = page_index == undefined ? 1 : page_index;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
         //เช็คเฉพาะส่วนที่สำคัญ
         if (dver_code == undefined || dver_card_license_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -64,19 +70,54 @@ exports.getDriverCardLicenseInformation = async (req, res, next) => {
                 script += ` and tbl_driver_card_license.dver_code = '${dver_code}' `
             }
 
-            script += ` order by dver_card_license_number asc;`
+            script += ` order by tbl_driver_card_license.ist_dt desc`
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    if (dver_card_license_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(tbl_driver_card_license.dver_card_license_type_code)::numeric / ${page_limit}) as page_total 
+                        from tbl_driver_card_license left join tbl_driver_card_license_type 
+                        on tbl_driver_card_license.dver_card_license_type_code = tbl_driver_card_license_type.dver_card_license_type_code 
+                        where dver_card_license_code = '${dver_card_license_code}' `;
+                    }
+                    else {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(tbl_driver_card_license.dver_card_license_type_code)::numeric / ${page_limit}) as page_total 
+                        from tbl_driver_card_license left join tbl_driver_card_license_type 
+                        on tbl_driver_card_license.dver_card_license_type_code = tbl_driver_card_license_type.dver_card_license_type_code 
+                        where dver_card_license_code is not null `;
+                    }
+
+                    if (dver_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_driver_card_license.dver_code = '${dver_code}' `
+                    }
+
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            tbl_temporary_count.data = JSON.parse(JSON.stringify(tbl_temporary_count.data).replace(/\:null/gi, "\:\"\""));
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                        }
+                    }
 
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -88,6 +129,8 @@ exports.getDriverCardLicenseInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

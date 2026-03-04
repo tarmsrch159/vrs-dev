@@ -31,7 +31,14 @@ exports.getPetrolWorkedDateInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { wrk_date_code, ptrl_code, action } = req.body[0];
+        let { wrk_date_code, ptrl_code, action, page_index, page_limit } = req.body[0];
+        page_index = page_index == undefined ? 1 : page_index;
+        page_limit = page_limit == undefined ? 10 : page_limit;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (wrk_date_code == undefined || ptrl_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -116,19 +123,60 @@ exports.getPetrolWorkedDateInformation = async (req, res, next) => {
                 script += ` and tbl_petrol.ptrl_code = '${ptrl_code}' `
             }
 
-            script += `  order by tbl_petrol_worked_date.wrk_date_code, tbl_petrol_worked_date.wrk_seq asc;`
+            script += `  order by tbl_petrol_worked_date.wrk_date_code, tbl_petrol_worked_date.wrk_seq asc`
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    let script = ``;
+                    if (wrk_date_code.toString().toUpperCase() != 'ALL') {
+                        script = `select
+                    ceil((ceil(count(wrk_date_code)) / ${page_limit})) as page_total, 
+                    (count(wrk_date_code)) as rows_total 
+                    from tbl_petrol
+                    left join tbl_office on tbl_petrol.off_code = tbl_office.off_code
+                    left join tbl_petrol_worked_date on tbl_petrol.ptrl_code = tbl_petrol_worked_date.ptrl_code 
+                    left join tbl_petrol_group on tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
+                    where tbl_petrol_worked_date.ptrl_worked_date_flag = '1' and ptrl_worked_date_code is not null 
+                    and tbl_petrol_worked_date.wrk_date_code = '${wrk_date_code}' `;
+                    }
+                    else {
+                        script = `select
+                    ceil((ceil(count(wrk_date_code)) / ${page_limit})) as page_total, 
+                    (count(wrk_date_code)) as rows_total 
+                    from tbl_petrol
+                    left join tbl_office on tbl_petrol.off_code = tbl_office.off_code
+                    left join tbl_petrol_worked_date on tbl_petrol.ptrl_code = tbl_petrol_worked_date.ptrl_code 
+                    left join tbl_petrol_group on tbl_petrol.ptrl_group_code = tbl_petrol_group.ptrl_group_code 
+                    where tbl_petrol_worked_date.ptrl_worked_date_flag = '1' and ptrl_worked_date_code is not null 
+                    and ptrl_worked_date_code is not null `;
+                    }
+
+                    if (ptrl_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_petrol.ptrl_code = '${ptrl_code}' `
+                    }
+
+                    let tbl_temporary2 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary2.code) {
+                        if (tbl_temporary2.data.length > 0) {
+                            page_total = parseInt(tbl_temporary2.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary2.data[0].rows_total);
+                        }
+                    }
 
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

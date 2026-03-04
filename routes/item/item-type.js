@@ -22,7 +22,10 @@ exports.getItemTypeInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { itm_type_code, action } = req.body[0];
+        let { itm_type_code, page_index, page_limit, action } = req.body[0];
+        if (page_index > 0) {
+            page_index -= 1;
+        }
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_type_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -51,20 +54,42 @@ exports.getItemTypeInformation = async (req, res, next) => {
                 where itm_type_flag = '1'`;
             }
 
-            script += `  order by itm_type_desc asc;`
+            script += `  order by tbl_item_type.ist_dt desc`
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
-
+                    let page_total = 0;
+                    let rows_total = 0;
+                    script = ``
+                    if (itm_type_code.toString().toUpperCase() != 'ALL') {
+                        script = `select ceil((ceil(count(itm_type_code)) / ${page_limit})) as page_total, (count(itm_type_code)) as rows_total 
+                        from tbl_item_type 
+                        where itm_type_flag = '1' and itm_type_code = '${itm_type_code}'`;
+                    }
+                    else {
+                        script = `select ceil((ceil(count(itm_type_code)) / ${page_limit})) as page_total, (count(itm_type_code)) as rows_total 
+                        from tbl_item_type 
+                        where itm_type_flag = '1'`;
+                    }
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                        }
+                    }
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
-                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                        page_total: page_total,
+                        rows_total: rows_total,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
                     }]
 
                     res.status(200).send(response);
@@ -75,7 +100,9 @@ exports.getItemTypeInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
-                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                        page_total: page_total,
+                        rows_total: rows_total
                     }]
 
                     res.status(200).send(response);

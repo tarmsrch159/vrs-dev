@@ -23,9 +23,11 @@ exports.getTransporeonInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { tprn_code, pull_code, start_date, end_date, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (tprn_code == undefined || pull_code == undefined || start_date == undefined || end_date == undefined
-            || page_index == undefined || page_limit == undefined || lic_code == undefined || action == undefined) {
+            || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',

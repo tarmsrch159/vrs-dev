@@ -135,11 +135,12 @@ exports.getOrderInformationold = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { ord_code, start_date, end_date, ord_type_code, ord_status, dpo_code, ptrl_code, ord_missing_latlng, off_code,
             search, page_index, page_limit, suggestion, ptrl_group_code, veh_group_code, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ord_code == undefined || start_date == undefined || end_date == undefined
             || ord_type_code == undefined || ord_status == undefined || dpo_code == undefined || ptrl_code == undefined
-            || ord_missing_latlng == undefined || search == undefined || page_index == undefined
-            || page_limit == undefined || action == undefined) {
+            || ord_missing_latlng == undefined || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -556,11 +557,12 @@ exports.getOrderInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { ord_code, start_date, end_date, ord_type_code, ord_status, dpo_code, ptrl_code, ord_missing_latlng, off_code,
             search, page_index, page_limit, suggestion, ptrl_group_code, veh_group_code, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ord_code == undefined || start_date == undefined || end_date == undefined
             || ord_type_code == undefined || ord_status == undefined || dpo_code == undefined || ptrl_code == undefined
-            || ord_missing_latlng == undefined || search == undefined || page_index == undefined
-            || page_limit == undefined || action == undefined) {
+            || ord_missing_latlng == undefined || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -2644,11 +2646,12 @@ exports.getOrderTMPStatusInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { ord_code, start_date, end_date, ord_type_code, transporeon_status, dpo_code, ptrl_code, ord_missing_latlng, off_code,
             search, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ord_code == undefined || start_date == undefined || end_date == undefined
             || ord_type_code == undefined || transporeon_status == undefined || dpo_code == undefined || ptrl_code == undefined
-            || ord_missing_latlng == undefined || search == undefined || page_index == undefined
-            || page_limit == undefined || action == undefined) {
+            || ord_missing_latlng == undefined || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',

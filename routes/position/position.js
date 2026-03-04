@@ -28,7 +28,14 @@ exports.getPositionInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { div_code, dep_code, pos_code, action } = req.body[0];
+        let { div_code, dep_code, pos_code, action, page_index, page_limit } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (div_code == undefined || dep_code == undefined || pos_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -75,7 +82,7 @@ exports.getPositionInformation = async (req, res, next) => {
                 and tbl_division.div_flag = '1'
                 where tbl_position.pos_flag = '1' and tbl_position.div_code = '${div_code}' and tbl_position.dep_code = '${dep_code}' 
                 and tbl_position.pos_code = '${pos_code}'
-                order by tbl_position.pos_desc asc;`;
+                `;
             }
             else {
                 script = `select tbl_division.div_code, tbl_division.div_desc, tbl_department.dep_code, tbl_department.dep_desc, 
@@ -92,20 +99,63 @@ exports.getPositionInformation = async (req, res, next) => {
                 left join tbl_division on tbl_department.div_code = tbl_division.div_code
                 and tbl_division.div_flag = '1'
                 where tbl_position.pos_flag = '1' and tbl_position.div_code = '${div_code}' and tbl_position.dep_code = '${dep_code}' 
-                order by tbl_position.pos_desc asc;`;
+               `;
             }
 
+            script += ` order by tbl_position.ist_dt desc`
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
+            console.log(script)
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
 
+                    if (pos_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil((ceil(count(*)) / ${page_limit})) as page_total
+                        from tbl_position
+                        left join tbl_department on tbl_position.div_code = tbl_department.div_code
+                        and tbl_position.dep_code = tbl_department.dep_code
+                        and tbl_department.dep_flag = '1'
+                        left join tbl_division on tbl_department.div_code = tbl_division.div_code
+                        and tbl_division.div_flag = '1'
+                        where tbl_position.pos_flag = '1' and tbl_position.div_code = '${div_code}' and tbl_position.dep_code = '${dep_code}' 
+                        and tbl_position.pos_code = '${pos_code}'
+                       `;
+                    }
+                    else {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil((ceil(count(*)) / ${page_limit})) as page_total
+                        from tbl_position
+                        left join tbl_department on tbl_position.div_code = tbl_department.div_code
+                        and tbl_position.dep_code = tbl_department.dep_code
+                        and tbl_department.dep_flag = '1'
+                        left join tbl_division on tbl_department.div_code = tbl_division.div_code
+                        and tbl_division.div_flag = '1'
+                        where tbl_position.pos_flag = '1' and tbl_position.div_code = '${div_code}' and tbl_position.dep_code = '${dep_code}' 
+                        `;
+                    }
+
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                        }
+                    }
+                    console.log(script)
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -117,6 +167,8 @@ exports.getPositionInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 

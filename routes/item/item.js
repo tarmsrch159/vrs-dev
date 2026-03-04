@@ -29,11 +29,13 @@ exports.getItemInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { itm_code, itm_material_number, search, page_index, page_limit, action } = req.body[0];
-        // console.log(itm_code);
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
+
 
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_code == undefined || itm_material_number == undefined || lic_code == undefined
-            || search == undefined || page_index == undefined || page_limit == undefined || action == undefined) {
+            || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -51,7 +53,6 @@ exports.getItemInformation = async (req, res, next) => {
                 page_index -= 1;
             }
 
-            page_limit = 10000;
 
             if (itm_code.toString().toUpperCase() != 'ALL') {
                 script = `select tbl_item.itm_code,
@@ -108,7 +109,7 @@ exports.getItemInformation = async (req, res, next) => {
                 or tbl_item_unit.itm_unit_desc like '%${search}%')`
             }
 
-            script += ` order by tbl_item.itm_desc asc `
+            script += ` order by tbl_item.ist_dt desc, tbl_item.itm_desc asc `
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

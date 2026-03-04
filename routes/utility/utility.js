@@ -25,10 +25,11 @@ exports.getActionLogInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { action_code, start_date, end_date, off_code, search, page_index, page_limit, action } = req.body[0];
-
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (action_code == undefined || start_date == undefined || end_date == undefined || off_code == undefined
-            || search == undefined || page_index == undefined || page_limit == undefined || action == undefined || lic_code == undefined) {
+            || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',

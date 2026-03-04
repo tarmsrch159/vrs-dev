@@ -63,10 +63,11 @@ exports.getJobInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { job_code, start_date, end_date, job_status, off_code,
             search, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (job_code == undefined || start_date == undefined || end_date == undefined
-            || job_status == undefined || search == undefined || page_index == undefined
-            || page_limit == undefined || action == undefined) {
+            || job_status == undefined || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -1459,10 +1460,11 @@ exports.getJobTMPStatusInformationold = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { job_code, start_date, end_date, transporeon_status, job_status, off_code,
             search, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (job_code == undefined || start_date == undefined || end_date == undefined
-            || transporeon_status == undefined || search == undefined || page_index == undefined
-            || page_limit == undefined || action == undefined) {
+            || transporeon_status == undefined || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -1681,10 +1683,11 @@ exports.getJobTMPStatusInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { job_code, start_date, end_date, transporeon_status, job_status, off_code,
             search, page_index, page_limit, ptrl_group_code, veh_group_code, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (job_code == undefined || start_date == undefined || end_date == undefined
-            || transporeon_status == undefined || search == undefined || page_index == undefined
-            || page_limit == undefined || action == undefined) {
+            || transporeon_status == undefined || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',

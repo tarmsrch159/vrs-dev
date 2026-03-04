@@ -23,7 +23,13 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { veh_type_code, action } = req.body[0];
+        let { veh_type_code, action, page_index, page_limit } = req.body[0];
+        page_limit = page_limit == undefined ? 10 : page_limit;
+        page_index = page_index == undefined ? 1 : page_index;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
 
         //เช็คเฉพาะส่วนที่สำคัญ
         if (veh_type_code == undefined || lic_code == undefined || action == undefined) {
@@ -69,13 +75,40 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
                 script += ` and v.veh_type_code = '${veh_type_code}'`;
             }
 
-            script += ` order by v.veh_type_desc asc, c.compartment_no asc;`
-            console.log(script);
+            script += ` order by v.ist_dt desc, c.compartment_no asc`
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
 
+                    if (veh_type_code.toString().toUpperCase() != 'ALL') {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(v.veh_type_code) / ${page_limit}) as page_total
+                        from tbl_vehicle_type v
+                        left join tbl_compartment_item c on v.veh_type_code = c.veh_type_code and (c.flag = '1' or c.flag is null)
+                        where v.veh_type_flag = '1' and v.veh_type_code = '${veh_type_code}'`;
+                    }
+                    else {
+                        script = `select 
+                        count(*) as rows_total,
+                        ceil(count(v.veh_type_code) / ${page_limit}) as page_total
+                        from tbl_vehicle_type v
+                        left join tbl_compartment_item c on v.veh_type_code = c.veh_type_code and (c.flag = '1' or c.flag is null)
+                        where v.veh_type_flag = '1'`;
+                    }
+
+                    let tbl_temporary_count = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_count.code) {
+                        if (tbl_temporary_count.data.length > 0) {
+                            tbl_temporary_count.data = JSON.parse(JSON.stringify(tbl_temporary_count.data).replace(/\:null/gi, "\:\"\""));
+                            page_total = parseInt(tbl_temporary_count.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary_count.data[0].rows_total);
+                        }
+                    }
                     // จัดกลุ่มข้อมูล
                     let groupedData = Object.values(tbl_temporary.data.reduce((acc, curr) => {
                         let key = curr.veh_type_code;
@@ -122,6 +155,8 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: groupedData, // <--- เปลี่ยนให้ส่ง groupedData แทน tbl_temporary.data
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -133,6 +168,8 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
                         invalid_code: '0',
                         message: '',
                         data: xresult,
+                        page_total: 0,
+                        rows_total: 0,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
@@ -233,7 +270,7 @@ exports.getCompartmentItem = async (req, res, next) => {
                 script += ` and v.veh_type_code = '${veh_type_code}'`;
             }
 
-            script += ` order by v.veh_type_desc asc, c.compartment_no asc;`
+            script += ` order by v.ist_dt desc, c.compartment_no asc;`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
@@ -417,6 +454,7 @@ exports.setVehicleTypeInformation = async (req, res, next) => {
             veh_type_desc,
             veh_qty,
             veh_unavailable,
+            veh_type_flag,
             max_merg,
             capacity_total,
             capacity_max,
@@ -429,7 +467,7 @@ exports.setVehicleTypeInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (!veh_type_code || !veh_type_desc || veh_qty == undefined || veh_unavailable == undefined || max_merg == undefined || capacity_total == undefined || capacity_max == undefined || capacity_min == undefined || compartment_qty == undefined || unloading_minute == undefined || loading_minute == undefined || compartment_item == undefined || !action || !lic_code) {
+        if (!veh_type_code || !veh_type_desc || max_merg == undefined || capacity_total == undefined || capacity_max == undefined || capacity_min == undefined || compartment_qty == undefined || unloading_minute == undefined || loading_minute == undefined || compartment_item == undefined || !action || !lic_code) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -444,12 +482,17 @@ exports.setVehicleTypeInformation = async (req, res, next) => {
 
             let insertedCompartments = [];
             let isError = false;
+            let vehTypeFlag = veh_type_flag == undefined ? '1' : String(veh_type_flag);
+            let vehQty = veh_qty == undefined ? 1 : veh_qty;
+            let vehUnavailable = veh_unavailable == undefined ? 0 : veh_unavailable;
+            let maxMerge = max_merg == undefined ? 0 : max_merg;
 
             let script = `UPDATE tbl_vehicle_type SET
                 veh_type_desc = '${veh_type_desc}',
-                veh_qty = ${veh_qty == undefined ? 1 : veh_qty},
-                veh_unavailable = ${veh_unavailable == undefined ? 0 : veh_unavailable},
-                max_merg = ${max_merg == undefined ? 0 : max_merg},
+                veh_qty = ${vehQty},
+                veh_unavailable = ${vehUnavailable},
+                veh_type_flag = '${vehTypeFlag}',
+                max_merg = ${maxMerge},
                 capacity_total = ${capacity_total == undefined ? 0 : capacity_total},
                 capacity_max = ${capacity_max == undefined ? 0 : capacity_max},
                 capacity_min = ${capacity_min == undefined ? 0 : capacity_min},
@@ -553,6 +596,7 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
             veh_type_desc,
             veh_qty,
             veh_unavailable,
+            veh_type_flag,
             max_merg,
             capacity_total,
             capacity_max,
@@ -565,7 +609,7 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (!veh_type_desc || veh_qty == undefined || compartment_item == undefined || veh_unavailable == undefined || max_merg == undefined || capacity_total == undefined || capacity_max == undefined || capacity_min == undefined || compartment_qty == undefined || unloading_minute == undefined || loading_minute == undefined || !action || !lic_code) {
+        if (!veh_type_desc || compartment_item == undefined || max_merg == undefined || capacity_total == undefined || capacity_max == undefined || capacity_min == undefined || compartment_qty == undefined || unloading_minute == undefined || loading_minute == undefined || !action || !lic_code) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -581,10 +625,14 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
             let veh_type_code = '';
             let insertedCompartments = [];
             let isError = false;
+            let vehTypeFlag = veh_type_flag == undefined ? '1' : String(veh_type_flag);
+            let vehQty = veh_qty == undefined ? 1 : veh_qty;
+            let vehUnavailable = veh_unavailable == undefined ? 0 : veh_unavailable;
+            let maxMerge = max_merg == undefined ? 0 : max_merg;
 
             // เช็คว่า veh_type_desc มีอยู่ใน tbl_vehicle_type หรือยัง
             let scriptCheck = `SELECT veh_type_code FROM tbl_vehicle_type 
-                WHERE veh_type_desc = '${veh_type_desc}' AND veh_type_flag = '1';`;
+                WHERE veh_type_desc = '${veh_type_desc}';`;
             let tbl_check = await pgConn.get(dbPrefix + lic_code, scriptCheck, config.connectionString());
 
             if (tbl_check && tbl_check.data && tbl_check.data.length > 0) {
@@ -599,9 +647,10 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
                 // อัพเดทข้อมูล master record
                 let scriptUpdate = `UPDATE tbl_vehicle_type SET
                     veh_type_desc = '${veh_type_desc}',
-                    veh_qty = ${veh_qty},
-                    veh_unavailable = ${veh_unavailable},
-                    max_merg = ${max_merg},
+                    veh_qty = ${vehQty},
+                    veh_unavailable = ${vehUnavailable},
+                    veh_type_flag = '${vehTypeFlag}',
+                    max_merg = ${maxMerge},
                     capacity_total = ${capacity_total},
                     capacity_max = ${capacity_max},
                     capacity_min = ${capacity_min},
@@ -622,8 +671,8 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
                 veh_type_code = 'veht-' + moment().format('x');
 
                 let scriptInsert = `INSERT INTO tbl_vehicle_type 
-                    (veh_type_code, veh_type_desc, veh_qty, veh_unavailable, max_merg, capacity_total, capacity_max, capacity_min, compartment_qty, unloading_minute, loading_minute, veh_type_flag, ist_dt) VALUES 
-                    ('${veh_type_code}', '${veh_type_desc}', ${vehQty}, ${vehUnavailable}, ${maxMerge}, ${capacity_total}, ${capacity_max}, ${capacity_min}, ${compartment_qty}, ${unloading_minute}, ${loading_minute}, '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}');`;
+                    (veh_type_code, veh_type_desc, veh_qty, veh_unavailable, veh_type_flag, max_merg, capacity_total, capacity_max, capacity_min, compartment_qty, unloading_minute, loading_minute, ist_dt) VALUES 
+                    ('${veh_type_code}', '${veh_type_desc}', ${vehQty}, ${vehUnavailable}, '${vehTypeFlag}', ${maxMerge}, ${capacity_total}, ${capacity_max}, ${capacity_min}, ${compartment_qty}, ${unloading_minute}, ${loading_minute}, '${moment().format('YYYY-MM-DD HH:mm:ss')}');`;
                 let tbl_insert = await pgConn.execute(dbPrefix + lic_code, scriptInsert, config.connectionString());
                 if (tbl_insert.code) {
                     isError = true;

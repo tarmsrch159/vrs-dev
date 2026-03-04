@@ -38,9 +38,11 @@ exports.getDepotInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { dpo_code, off_code, dpo_group_code, search, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (dpo_code == undefined || off_code == undefined || dpo_group_code == undefined || lic_code == undefined
-            || search == undefined || page_index == undefined || page_limit == undefined || action == undefined) {
+            || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -58,7 +60,6 @@ exports.getDepotInformation = async (req, res, next) => {
                 page_index -= 1;
             }
 
-            page_limit = 10000;
 
             if (dpo_code.toString().toUpperCase() != 'ALL') {
                 script = `select dpo_code, dpo_number, dpo_desc, dpo_short_desc, dpo_address, dpo_zip_code, dpo_country_code,
@@ -105,7 +106,7 @@ exports.getDepotInformation = async (req, res, next) => {
                 or dpo_zip_code like '%${search}%')`
             }
 
-            script += ` order by dpo_number asc `
+            script += ` order by ist_dt desc `
             script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());

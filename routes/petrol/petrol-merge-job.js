@@ -86,7 +86,7 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
                 AND tbl_petrol_merge_job.ptrl_merge_code = '${ptrl_merge_code}' `;
             }
 
-            script += ` order by tbl_merge_petrol.ptrl_desc asc `
+            script += ` order by tbl_petrol_merge_job.ist_dt desc `
             script += ` limit ${limit} offset ${offset};`
 
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
@@ -259,7 +259,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
             }
 
             script += ` 
-            order by tbl_petrol_merge_job_info.ptrl_merge_job_code asc
+            order by tbl_petrol_merge_job_info.ist_dt desc
             `
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {

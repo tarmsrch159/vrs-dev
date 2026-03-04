@@ -37,7 +37,15 @@ exports.getDepotItemInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { itm_code, dpo_code, action } = req.body[0];
+        let { itm_code, dpo_code, page_index, page_limit, action } = req.body[0];
+
+        page_index = page_index || 1;
+        page_limit = page_limit || 10;
+
+        if (page_index > 0) {
+            page_index -= 1;
+        }
+
         //เช็คเฉพาะส่วนที่สำคัญ
         if (itm_code == undefined || dpo_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
@@ -122,19 +130,55 @@ exports.getDepotItemInformation = async (req, res, next) => {
                 script += ` and tbl_depot.dpo_code = '${dpo_code}' `
             }
 
-            script += `  order by itm_desc asc;`
-
+            script += `  order by tbl_depot_item.ist_dt desc `;
+            script += ` limit ${page_limit} offset ${page_index * page_limit}`;
             let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 //debugger
                 if (tbl_temporary.data.length > 0) {
                     tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+                    let page_total = 0;
+                    let rows_total = 0;
+
+                    let script = ``
+
+                    if (itm_code.toString().toUpperCase() != 'ALL') {
+                        script = `select ceil((ceil(count(dpo_item_code)) / ${page_limit})) as page_total, (count(dpo_item_code)) as rows_total 
+                        from tbl_depot
+                        left join tbl_office on tbl_depot.off_code = tbl_office.off_code
+                        left join tbl_depot_item on tbl_depot.dpo_code = tbl_depot_item.dpo_code 
+                        left join tbl_item on tbl_depot_item.itm_code = tbl_item.itm_code 
+                        left join tbl_item_type on tbl_item.itm_type_code = tbl_item_type.itm_type_code 
+                        left join tbl_depot_group on tbl_depot.dpo_group_code = tbl_depot_group.dpo_group_code 
+                        where tbl_depot_item.itm_code = '${itm_code}' and tbl_depot_item.dpo_item_flag = '1' and dpo_item_code is not null `
+                    } else {
+                        script = `select ceil((ceil(count(dpo_item_code)) / ${page_limit})) as page_total, (count(dpo_item_code)) as rows_total 
+                        from tbl_depot
+                        left join tbl_office on tbl_depot.off_code = tbl_office.off_code
+                        left join tbl_depot_item on tbl_depot.dpo_code = tbl_depot_item.dpo_code 
+                        left join tbl_item on tbl_depot_item.itm_code = tbl_item.itm_code 
+                        left join tbl_item_type on tbl_item.itm_type_code = tbl_item_type.itm_type_code 
+                        left join tbl_depot_group on tbl_depot.dpo_group_code = tbl_depot_group.dpo_group_code 
+                        where tbl_depot_item.dpo_item_flag = '1' and dpo_item_code is not null `
+                    }
+
+                    if (dpo_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_depot.dpo_code = '${dpo_code}' `
+                    }
+
+                    let tbl_temporary_total = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                    if (!tbl_temporary_total.code) {
+                        page_total = parseInt(tbl_temporary_total.data[0].page_total);
+                        rows_total = parseInt(tbl_temporary_total.data[0].rows_total);
+                    }
 
                     let response = [{
                         status: 'success',
                         invalid_code: '0',
                         message: '',
                         data: tbl_temporary.data,
+                        page_total: page_total,
+                        rows_total: rows_total,
                         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                     }]
 
