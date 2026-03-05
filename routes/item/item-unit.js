@@ -23,6 +23,8 @@ exports.getItemUnitInformation = async (req, res, next) => {
 
         let lic_code = req.header('lic_code');
         let { itm_unit_code, page_index, page_limit, action } = req.body[0];
+        page_limit = page_limit == undefined ? 10 : page_limit;
+        page_index = page_index == undefined ? 1 : page_index;
         if (page_index > 0) {
             page_index -= 1;
         }
