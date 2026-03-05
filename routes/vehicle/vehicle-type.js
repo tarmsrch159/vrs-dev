@@ -749,9 +749,9 @@ exports.getCompartmentTypeLevelItem = async (req, res, next) => {
         } else {
 
             let script = `select 
+            cl.veh_compartment_level_type_code,
                     cl.compartment_item_id,
                     cl.veh_compartment_type_code,
-                    cl.veh_compartment_level_type_code,
                     cl.veh_compartment_type_level_number,
                     cl.veh_compartment_type_level,
                     cl.veh_compartment_type_level_flag,
@@ -1588,9 +1588,9 @@ exports.removeCompartmentLevelById = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { level_id, action } = req.body[0];
+        let { veh_compartment_level_type_code, action } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (level_id == undefined || lic_code == undefined || action == undefined) {
+        if (veh_compartment_level_type_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -1604,10 +1604,10 @@ exports.removeCompartmentLevelById = async (req, res, next) => {
         } else {
             let script = ``;
             // ดัก petrol_merge_job_id เป็น array
-            let level_idArr = Array.isArray(level_id) ? level_id : [level_id];
+            let level_idArr = Array.isArray(veh_compartment_level_type_code) ? veh_compartment_level_type_code : [veh_compartment_level_type_code];
             let level_idIn = level_idArr.map(c => `'${c}'`).join(', ');
             script = `update tbl_vehicle_type_compartment_level set veh_compartment_type_level_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-            where vect_compartment_level_id in (${level_idIn});`
+            where veh_compartment_level_type_code in (${level_idIn});`
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
