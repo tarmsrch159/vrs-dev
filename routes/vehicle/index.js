@@ -30,10 +30,17 @@ router.put('/group/depot/information', vehicle_group_depot.addVehicleGroupDepotI
 
 //type
 router.post('/type/information', vehicle_type.getVehicleTypeInformation);
-router.delete('/type/information', vehicle_type.removeVehicleType);
+router.post('/type/detail/information', vehicle_type.getVehicleTypeInformationWithDetail);
+router.post('/type/compartment/detail/information', vehicle_type.getVehicleTypeCompartmentInformationWithDetail);
+router.post('/type/compartment/information', vehicle_type.getCompartmentItem);
+router.post('/type/compartment/level/information', vehicle_type.getCompartmentTypeLevelItem)
 router.patch('/type/information', vehicle_type.setVehicleTypeInformation);
 router.put('/type/information', vehicle_type.addVehicleTypeInformation);
-router.delete('/type/compartment/information', vehicle_type.removeCompartmentItemById);
+router.put('/type-compartment/information', vehicle_type.addVehicleTypeCompartmentInformation);
+router.put('/type-compartment-level/information', vehicle_type.addVehicleTypeCompartmentLevelInformation);
+router.delete('/type/information', vehicle_type.removeVehicleType);
+router.delete('/type-compartment/information', vehicle_type.removeCompartmentItemById);
+router.delete('/type-compartment-level/information', vehicle_type.removeCompartmentLevelById);
 
 //unavailable type
 router.post('/unavailable/type/information', vehicle_unavailable_type.getVehicleUnavailableTypeInformation);
