@@ -1,6 +1,6 @@
 # AOS-READ-FILE
 
-ระบบอ่านไฟล์ CSV จาก FTP/SFTP Server แล้ว Insert ลง PostgreSQL อัตโนมัติ พร้อม REST API สำหรับจัดการ Connection Configs
+ระบบอ่านไฟล์ CSV จาก FTP/SFTP Server
 
 ---
 
@@ -27,10 +27,6 @@ AOS-READ-FILE/
 │   └── connection-configs/
 │       ├── connection-configs.controller.js
 │       └── connection-configs.service.js
-├── csv-test/                     # Mock CSV สำหรับทดสอบ
-│   ├── OMI/OMI/
-│   ├── EODmeter/
-│   └── EODTank/202603/
 └── backup/                       # ไฟล์ backup เวอร์ชันเก่า
     └── ftp-worker-backup.js
 ```
