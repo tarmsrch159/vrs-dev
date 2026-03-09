@@ -9,15 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getItemUnitInformation = async (req, res, next) => {
 
-    var xresult = [{
-        itm_unit_code: "",
-        itm_unit_desc: "",
-        itm_unit_short_desc: "",
-        itm_unit_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

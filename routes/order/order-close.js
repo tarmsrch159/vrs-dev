@@ -9,66 +9,7 @@ const dbPrefix = config.dbPrefix();
 
 exports.getVehicleOrderForCloseInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_code: "",
-        veh_number: "",
-        veh_license_number: "",
-        veh_license_province: "",
-        veh_type_code: "",
-        veh_type_desc: "",
-        veh_status: "",
-        veh_group_code: "",
-        veh_group_desc: "",
-        veh_blackbox_number: "",
-        veh_brand: "",
-        veh_model: "",
-        veh_tank_material: "",
-        veh_loading_system: 0,
-        veh_maximum_compartment: 0,
-        veh_capacity_in_compartment: 0,
-        veh_tare_weight: 0,
-        veh_gross_weight: 0,
-        veh_tank_width: 0,
-        veh_tank_length: 0,
-        veh_tank_height: 0,
-        veh_tank_capacity: 0,
-        veh_maximum_capacity: 0,
-        veh_discharge_sequence: "",
-        veh_option_pump: "",
-        veh_option_doeb: "",
-        veh_option_m12: "",
-        veh_option_ivms: "",
-        veh_option_afdd: "",
-        veh_registration_starting_date: "",
-        veh_registration_expire_date: "",
-        veh_registration_remark: "",
-        veh_support_product: "",
-        veh_sticker: "",
-        veh_braking_system: "",
-        veh_service_life: 0,
-        veh_flag: "",
-        veh_image: "",
-        veh_support_climb_mountain: "",
-        veh_maximum_distance: 0,
-        veh_minimum_distance: 0,
-        veh_maximum_jobs: 0,
-        veh_remark: "",
-        veh_sub_license_number: "",
-        veh_sub_license_province: "",
-        veh_sub_brand: "",
-        veh_sub_model: "",
-        veh_sub_registration_starting_date: "",
-        veh_sub_registration_expire_date: "",
-        veh_sub_registration_remark: "",
-        veh_sub_service_life: 0,
-        veh_sub_braking_system: "",
-        veh_sub_image: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        off_code: "",
-        off_desc: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -147,36 +88,7 @@ exports.getVehicleOrderForCloseInformation = async (req, res, next) => {
 
 exports.getDriverOrderForCloseInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_code: "",
-        dver_username: "",
-        dver_userpassword: "",
-        dver_ref_code: "",
-        dver_name: "",
-        dver_surname: "",
-        dver_mobile_number: "",
-        dver_email: "",
-        dver_div_code: "",
-        dver_div_desc: "",
-        dver_dep_code: "",
-        dver_dep_desc: "",
-        dver_pos_code: "",
-        dver_pos_desc: "",
-        dver_group_code: "",
-        dver_group_desc: "",
-        dver_gender: "",
-        dver_role_code: "",
-        dver_role_desc: "",
-        dver_flag: "",
-        dver_image_profile: "",
-        application_mobile_version: "",
-        dver_personal_number: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

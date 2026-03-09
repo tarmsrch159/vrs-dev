@@ -10,36 +10,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDriverInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_code: "",
-        dver_username: "",
-        dver_userpassword: "",
-        dver_ref_code: "",
-        dver_name: "",
-        dver_surname: "",
-        dver_mobile_number: "",
-        dver_email: "",
-        dver_div_code: "",
-        dver_div_desc: "",
-        dver_dep_code: "",
-        dver_dep_desc: "",
-        dver_pos_code: "",
-        dver_pos_desc: "",
-        dver_group_code: "",
-        dver_group_desc: "",
-        dver_gender: "",
-        dver_role_code: "",
-        dver_role_desc: "",
-        dver_flag: "",
-        dver_image_profile: "",
-        application_mobile_version: "",
-        dver_personal_number: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

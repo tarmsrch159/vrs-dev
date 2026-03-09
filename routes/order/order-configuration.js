@@ -774,18 +774,7 @@ exports.addLocationPetrolOrderInformation = async (req, res, next) => {
 
 exports.getItemOfOrderInformationForConfig = async (req, res, next) => {
 
-    var xresult = [{
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_material_number: "",
-        itm_unit_code: "",
-        itm_unit_desc: "",
-        item_quantity: 0.0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -971,33 +960,7 @@ exports.setDateTimeOrderInformation = async (req, res, next) => {
 
 exports.getItemOfOrderInformationForPetrol = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_tank_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        tnk_number: "",
-        tnk_capacity: 0,
-        tnk_target: 0,
-        tnk_deadstock: 0,
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_icon: "",
-        itm_image: "",
-        itm_material_number: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

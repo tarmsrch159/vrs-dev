@@ -9,33 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolTankInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_tank_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        tnk_number: "",
-        tnk_capacity: 0,
-        tnk_target: 0,
-        tnk_deadstock: 0,
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_icon: "",
-        itm_image: "",
-        itm_material_number: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

@@ -9,14 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getVehicleUnavailableTypeInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_unavailable_type_code: "",
-        veh_unavailable_type_desc: "",
-        veh_unavailable_type_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

@@ -10,24 +10,7 @@ const axios = require('axios');
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getRouteOfJobInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ord_code: "",
-        location_type_code: "",
-        location_type_desc: "",
-        location_code: "",
-        location_number: "",
-        location_desc: "",
-        location_address: "",
-        location_zip_code: "",
-        location_country_code: "",
-        location_lat: 0.0,
-        location_lon: 0.0,
-        location_city: "",
-        location_minute: 0,
-        start_dt: "",
-        end_dt: "",
-        location_distance: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

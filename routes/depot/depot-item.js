@@ -9,30 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDepotItemInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dpo_item_code: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        dpo_group_code: "",
-        dpo_group_desc: "",
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_unit_code: "",
-        itm_icon: "",
-        itm_image: "",
-        itm_material_number: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

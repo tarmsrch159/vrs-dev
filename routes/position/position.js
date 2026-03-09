@@ -8,22 +8,7 @@ const dbPrefix = config.dbPrefix();
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getPositionInformation = async (req, res, next) => {
 
-    var xresult = [{
-        div_code: "",
-        div_desc: "",
-        dep_code: "",
-        dep_desc: "",
-        pos_code: "",
-        pos_desc: "",
-        pos_flag: "",
-        pos_salary: 0,
-        pos_allowance: 0,
-        pos_hour_working: 0,
-        pos_hour_overtimes: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

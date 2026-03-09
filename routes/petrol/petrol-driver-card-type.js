@@ -9,22 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolDriverCardTypeInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_driver_card_type_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        dver_card_type_code: "",
-        dver_card_type_desc: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

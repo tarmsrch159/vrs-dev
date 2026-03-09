@@ -9,24 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolWorkedDateInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_worked_date_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        wrk_date_code: "",
-        wrk_date_desc: "",
-        ptrl_open_time: "",
-        ptrl_close_time: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

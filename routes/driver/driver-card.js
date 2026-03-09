@@ -9,19 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDriverCardInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_card_code: "",
-        dver_code: "",
-        dver_card_number: "",
-        dver_card_type_code: "",
-        dver_card_type_desc: "",
-        dver_card_date: "",
-        dver_card_expire_date: "",
-        dver_card_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

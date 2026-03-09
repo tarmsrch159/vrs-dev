@@ -9,17 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolGroupInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        ptrl_group_short_desc: "",
-        ptrl_group_flag: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

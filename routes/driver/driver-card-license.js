@@ -9,19 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDriverCardLicenseInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_card_license_code: "",
-        dver_code: "",
-        dver_card_license_number: "",
-        dver_card_license_type_code: "",
-        dver_card_license_type_desc: "",
-        dver_card_license_date: "",
-        dver_card_license_expire_date: "",
-        dver_card_license_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

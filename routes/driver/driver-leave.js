@@ -9,21 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDriverLeaveInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_leave_code: "",
-        dver_code: "",
-        dver_name: "",
-        dver_surname: "",
-        dver_leave_date: "",
-        dver_leave_desc: "",
-        dver_leave_type_code: "",
-        dver_leave_type_desc: "",
-        dver_leave_status: "",
-        dver_leave_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

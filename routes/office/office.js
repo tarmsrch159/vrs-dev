@@ -10,30 +10,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getOfficeInformation = async (req, res, next) => {
 
-    var xresult = [{
-        off_code: "",
-        off_desc: "",
-        off_desc_en: "",
-        off_number: "",
-        off_address: "",
-        off_tamb_code: "",
-        off_tamb_desc: "",
-        off_tamb_desc_en: "",
-        off_amph_code: "",
-        off_amph_desc: "",
-        off_amph_desc_en: "",
-        off_prov_code: "",
-        off_prov_desc: "",
-        off_prov_desc_en: "",
-        off_post_code: "",
-        off_latitude: 0.0,
-        off_longitude: 0.0,
-        off_area: 0,
-        off_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
 
     return (async () => {

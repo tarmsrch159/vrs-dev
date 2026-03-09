@@ -9,16 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getVehicleCompartmentLevelInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_compartment_level_code: "",
-        veh_compartment_code: "",
-        veh_compartment_level_number: "",
-        veh_compartment_level: 0,
-        veh_compartment_level_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

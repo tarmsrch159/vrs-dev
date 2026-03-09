@@ -9,24 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolMergeJobInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_merge_job_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        ptrl_merge_code: "",
-        ptrl_merge_number: "",
-        ptrl_merge_desc: "",
-        ptrl_merge_short_desc: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -156,24 +139,7 @@ exports.getPetrolMergeJobInformation = async (req, res, next) => {
 }
 
 exports.getPetrolMergeJobDetails = async (req, res, next) => {
-    var xresult = [{
-        ptrl_merge_job_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        ptrl_merge_code: "",
-        ptrl_merge_number: "",
-        ptrl_merge_desc: "",
-        ptrl_merge_short_desc: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

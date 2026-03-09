@@ -9,17 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDepotGroupInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dpo_group_code: "",
-        dpo_group_desc: "",
-        dpo_group_short_desc: "",
-        dpo_group_flag: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

@@ -9,24 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getVehicleUnavailableInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_unavailable_code: "",
-        veh_code: "",
-        veh_number: "",
-        veh_license_number: "",
-        veh_license_province: "",
-        veh_type_code: "",
-        veh_type_desc: "",
-        veh_unavailable_date: "",
-        veh_unavailable_desc: "",
-        veh_unavailable_type_code: "",
-        veh_unavailable_type_desc: "",
-        veh_unavailable_status: "",
-        veh_unavailable_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

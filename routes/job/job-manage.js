@@ -148,9 +148,7 @@ exports.removeManageItem = async (req, res, next) => {
 
 
 exports.getVehicleForManageOrder = async (req, res, next) => {
-  var xresult = [{
-    veh_code: "",
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -320,9 +318,7 @@ exports.getVehicleForManageOrder = async (req, res, next) => {
 };
 
 exports.getVehicleOfGroupForManageOrder = async (req, res, next) => {
-  var xresult = [{
-    veh_code: "",
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -496,9 +492,7 @@ exports.getVehicleOfGroupForManageOrder = async (req, res, next) => {
 };
 
 exports.addPlanforVehicleOrderManage = async (req, res, next) => {
-  var xresult = [{
-    veh_code: "",
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -1863,42 +1857,7 @@ exports.addPlanforVehicleOrderManage = async (req, res, next) => {
 };
 
 exports.getJobInformationforVehicle = async (req, res, next) => {
-  var xresult = [{
-    job_code: "",
-    tms_transport_code: "",
-    transport_code: "",
-    tour_code: "",
-    pull_code: "",
-    number: "",
-    document_reference: "",
-    job_dt: "",
-    job_status: "",
-    job_comment: "",
-    gsap_order_type_code: "",
-    gsap_order_status: "",
-    gsap_order_number: "",
-    gsap_shipments_number: "",
-    transporeon_status: "",
-    off_code: "",
-    job_flag: "",
-    ist_dt: "",
-    mdf_dt: "",
-    rm_dt: "",
-    loading_count: 0,
-    unloading_count: 0,
-    item_count: 0,
-    item_quantity: 0,
-    dver_code: "",
-    veh_code: "",
-    transporeon_result: "",
-    transporeon_ist_dt: "",
-    transporeon_mdf_dt: "",
-    transporeon_rm_dt: "",
-    distance: 0,
-    transit_start_dt: "",
-    transit_end_dt: "",
-    transit_minute: 0,
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -2033,51 +1992,7 @@ exports.getJobInformationforVehicle = async (req, res, next) => {
 };
 
 exports.getOrderInJobInformationEdit = async (req, res, next) => {
-  var xresult = [{
-    ord_item_code: "",
-    dpo_code: "",
-    dpo_number: "",
-    dpo_desc: "",
-    dpo_short_desc: "",
-    dpo_address: "",
-    dpo_zip_code: "",
-    dpo_country_code: "",
-    dpo_city: "",
-    dpo_lat: 0.0,
-    dpo_lon: 0.0,
-    dpo_loading_minute: 0,
-    ord_code: "",
-    itm_code: "",
-    itm_desc: "",
-    itm_short_desc: "",
-    itm_image: "",
-    itm_material_number: "",
-    itm_type_code: "",
-    itm_type_desc: "",
-    itm_unit_code: "",
-    itm_unit_desc: "",
-    itm_unit_short_desc: "",
-    item_quantity: 0,
-    itm_weight_litr_per_kg: 0,
-    ptrl_code: "",
-    ptrl_number: "",
-    ptrl_desc: "",
-    ptrl_short_desc: "",
-    ptrl_address: "",
-    ptrl_zip_code: "",
-    ptrl_country_code: "",
-    ptrl_city: "",
-    ptrl_lat: 0.0,
-    ptrl_lon: 0.0,
-    ptrl_unloading_minute: 0,
-    shipments_code_new: "",
-    ord_code_new: "",
-    itm_code_new: "",
-    ptrl_tank_code_new: "",
-    ist_dt: "",
-    mdf_dt: "",
-    rm_dt: "",
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -2243,36 +2158,7 @@ exports.getOrderInJobInformationEdit = async (req, res, next) => {
 };
 
 exports.getCompartmentJobForEdit = async (req, res, next) => {
-  var xresult = [{
-    veh_code: "",
-    veh_license_number: "",
-    veh_license_province: "",
-    ord_veh_compartment_code: "",
-    ord_code: "",
-    itm_code: "",
-    itm_desc: "",
-    itm_material_number: "",
-    itm_unit_code: "",
-    itm_unit_desc: "",
-    item_quantity: 0,
-    ord_veh_compartment_flag: "",
-    veh_compartment_code: "",
-    veh_compartment_number: "",
-    ptrl_code: "",
-    ptrl_desc: "",
-    ptrl_number: "",
-    ptrl_tank_code: "",
-    tnk_number: "",
-    tnk_space: 0,
-    tnk_full: 0,
-    tnk_capacity: 0,
-    tnk_target: 0,
-    tnk_deadstock: 0,
-    book_stock: 0,
-    average_daily_sales: 0,
-    tnk_stock_days: 0,
-    tnk_fixed: ""
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -2395,36 +2281,7 @@ exports.getCompartmentJobForEdit = async (req, res, next) => {
 };
 
 exports.getCompartmentJobForEditWithOrderinTruck = async (req, res, next) => {
-  var xresult = [{
-    veh_code: "",
-    veh_license_number: "",
-    veh_license_province: "",
-    ord_veh_compartment_code: "",
-    ord_code: "",
-    itm_code: "",
-    itm_desc: "",
-    itm_material_number: "",
-    itm_unit_code: "",
-    itm_unit_desc: "",
-    item_quantity: 0,
-    ord_veh_compartment_flag: "",
-    veh_compartment_code: "",
-    veh_compartment_number: "",
-    ptrl_code: "",
-    ptrl_desc: "",
-    ptrl_number: "",
-    ptrl_tank_code: "",
-    tnk_number: "",
-    tnk_space: 0,
-    tnk_full: 0,
-    tnk_capacity: 0,
-    tnk_target: 0,
-    tnk_deadstock: 0,
-    book_stock: 0,
-    average_daily_sales: 0,
-    tnk_stock_days: 0,
-    tnk_fixed: ""
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -2624,9 +2481,7 @@ exports.getCompartmentJobForEditWithOrderinTruck = async (req, res, next) => {
 };
 
 exports.updateVehicleForManageOrder = async (req, res, next) => {
-  var xresult = [{
-    veh_code: "",
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -2887,42 +2742,7 @@ exports.updateVehicleForManageOrder = async (req, res, next) => {
 };
 
 exports.getDataWorkSheetJobCode = async (req, res, next) => {
-  var xresult = [{
-    job_code: "",
-    tms_transport_code: "",
-    transport_code: "",
-    tour_code: "",
-    pull_code: "",
-    number: "",
-    document_reference: "",
-    job_dt: "",
-    job_status: "",
-    job_comment: "",
-    gsap_order_type_code: "",
-    gsap_order_status: "",
-    gsap_order_number: "",
-    gsap_shipments_number: "",
-    transporeon_status: "",
-    off_code: "",
-    job_flag: "",
-    ist_dt: "",
-    mdf_dt: "",
-    rm_dt: "",
-    loading_count: 0,
-    unloading_count: 0,
-    item_count: 0,
-    item_quantity: 0,
-    dver_code: "",
-    veh_code: "",
-    transporeon_result: "",
-    transporeon_ist_dt: "",
-    transporeon_mdf_dt: "",
-    transporeon_rm_dt: "",
-    distance: 0,
-    transit_start_dt: "",
-    transit_end_dt: "",
-    transit_minute: 0,
-  },];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header("lic_code");
@@ -3341,54 +3161,7 @@ exports.setRouteOfPlanInformation = async (req, res, next) => {
 
 exports.getJobFromOrder = async (req, res, next) => {
 
-  var xresult = [{
-    job_code: "",
-    tms_transport_code: "",
-    transport_code: "",
-    tour_code: "",
-    pull_code: "",
-    number: "",
-    document_reference: "",
-    job_dt: "",
-    job_status: "",
-    job_comment: "",
-    gsap_order_type_code: "",
-    gsap_order_status: "",
-    gsap_order_number: "",
-    gsap_shipments_number: "",
-    transporeon_status: "",
-    off_code: "",
-    job_flag: "",
-    ist_dt: "",
-    mdf_dt: "",
-    rm_dt: "",
-    loading_count: 0,
-    unloading_count: 0,
-    item_count: 0,
-    item_quantity: 0,
-    dver_code: "",
-    veh_code: "",
-    transporeon_result: "",
-    transporeon_ist_dt: "",
-    transporeon_mdf_dt: "",
-    transporeon_rm_dt: "",
-    distance: 0,
-    transit_start_dt: "",
-    transit_end_dt: "",
-    transit_minute: 0,
-    dver_name: "",
-    dver_surname: "",
-    dver_mobile_number: "",
-    dver_image_profile: "",
-    veh_blackbox_number: "",
-    veh_number: "",
-    veh_license_number: "",
-    veh_license_province: "",
-    veh_sub_license_number: "",
-    veh_sub_license_province: "",
-    veh_type_code: "",
-    veh_type_desc: ""
-  }];
+  var xresult = [];
 
   return (async () => {
     let lic_code = req.header('lic_code');

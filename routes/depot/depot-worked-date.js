@@ -9,24 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDepotWorkedDateInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dpo_worked_date_code: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        dpo_group_code: "",
-        dpo_group_desc: "",
-        wrk_date_code: "",
-        wrk_date_desc: "",
-        dpo_open_time: "",
-        dpo_close_time: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

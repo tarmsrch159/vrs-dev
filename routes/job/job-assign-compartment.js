@@ -319,8 +319,7 @@ function assignTruck(truckCompartments, dropOrders) {
 
 exports.fillFuelFromJobToVehicle = async (req, res, next) => {
 
-    var xresult = [{
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header("lic_code");

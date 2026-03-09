@@ -9,14 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDivisionInformation = async (req, res, next) => {
 
-    var xresult = [{
-        div_code: "",
-        div_desc: "",
-        div_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

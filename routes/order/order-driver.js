@@ -8,34 +8,7 @@ const dbPrefix = config.dbPrefix();
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getDriverOfOrderInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_code: "",
-        dver_username: "",
-        dver_userpassword: "",
-        dver_ref_code: "",
-        dver_image_profile: "",
-        dver_name: "",
-        dver_surname: "",
-        dver_mobile_number: "",
-        dver_email: "",
-        dver_div_code: "",
-        dver_dep_code: "",
-        dver_pos_code: "",
-        dver_group_code: "",
-        dver_gender: "",
-        dver_role_code: "",
-        dver_personal_number: "",
-        application_mobile_version: "",
-        dver_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        off_code: "",
-        job_currently: 0,
-        unavailable: 0,
-        checked: "",
-        dver_resson: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
