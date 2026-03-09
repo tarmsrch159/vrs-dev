@@ -8,34 +8,7 @@ const dbPrefix = config.dbPrefix();
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getPetrolInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_sitecode: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        ptrl_country_code: "",
-        ptrl_unloading_minute: 0,
-        ptrl_expenses_per_km: 0,
-        ptrl_area: 0,
-        ptrl_option_pump: "",
-        ptrl_option_mrge_orders: "",
-        ptrl_lat: 0.0,
-        ptrl_lon: 0.0,
-        off_code: "",
-        off_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        ptrl_flag: "",
-        ptrl_remark: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        ptrl_sales_group: "",
-        ptrl_sales_type: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

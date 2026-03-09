@@ -9,30 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolItemInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_item_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_group_code: "",
-        ptrl_group_desc: "",
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_unit_code: "",
-        itm_icon: "",
-        itm_image: "",
-        itm_material_number: "",
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -409,13 +386,7 @@ exports.addPetrolItemInformation = async (req, res, next) => {
 }
 
 exports.mergePetrolItem = async (req, res, next) => {
-    var xresult = [{
-        status: 'success',
-        invalid_code: '0',
-        message: '',
-        data: [],
-        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-    }];
+    var xresult = [];
 
     return (async () => {
         let method = req.method;
@@ -491,18 +462,7 @@ exports.mergePetrolItem = async (req, res, next) => {
 
 exports.getMergePetrolItem = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_item_code: "",
-        ptrl_code: "",
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_type_code: "",
-        itm_unit_code: "",
-        itm_icon: "",
-        itm_image: "",
-        itm_material_number: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

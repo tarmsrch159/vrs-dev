@@ -10,9 +10,7 @@ const dbPrefix = config.dbPrefix();
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getRunNumberOrderInformation = async (req, res, next) => {
 
-    var xresult = [{
-        shipments_code: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -92,44 +90,7 @@ exports.getRunNumberOrderInformation = async (req, res, next) => {
 
 exports.getOrderInformationold = async (req, res, next) => {
 
-    var xresult = [{
-        ord_code: "",
-        shipments_code: "",
-        transport_code: "",
-        tour_code: "",
-        pull_code: "",
-        number: "",
-        document_reference: "",
-        plant: "",
-        assigned_carrier_id: "",
-        assigned_carrier_name: "",
-        assigned_creditor_number: "",
-        assigned_carrier_number: "",
-        ord_dt: "",
-        req_dt: "",
-        ord_status: "",
-        ord_comment: "",
-        ord_customer_code: "",
-        ord_customer_name: "",
-        ord_customer_number: "",
-        gsap_order_type_code: "",
-        gsap_order_status: "",
-        gsap_order_number: "",
-        ord_type_code: "",
-        ord_type_desc: "",
-        transporeon_status: "",
-        loading_count: 0,
-        unloading_count: 0,
-        item_count: 0,
-        item_quantity: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        off_code: "",
-        ord_flag: "",
-        order_segmentation: "",
-        deadlock_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -514,44 +475,7 @@ exports.getOrderInformationold = async (req, res, next) => {
 }
 exports.getOrderInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ord_code: "",
-        shipments_code: "",
-        transport_code: "",
-        tour_code: "",
-        pull_code: "",
-        number: "",
-        document_reference: "",
-        plant: "",
-        assigned_carrier_id: "",
-        assigned_carrier_name: "",
-        assigned_creditor_number: "",
-        assigned_carrier_number: "",
-        ord_dt: "",
-        req_dt: "",
-        ord_status: "",
-        ord_comment: "",
-        ord_customer_code: "",
-        ord_customer_name: "",
-        ord_customer_number: "",
-        gsap_order_type_code: "",
-        gsap_order_status: "",
-        gsap_order_number: "",
-        ord_type_code: "",
-        ord_type_desc: "",
-        transporeon_status: "",
-        loading_count: 0,
-        unloading_count: 0,
-        item_count: 0,
-        item_quantity: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        off_code: "",
-        ord_flag: "",
-        order_segmentation: "",
-        deadlock_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -947,46 +871,7 @@ exports.getOrderInformation = async (req, res, next) => {
 exports.getOrderItemInformationformanagePlan = async (req, res, next) => {
 
 
-    var xresult = [{
-        ord_item_code: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        dpo_address: "",
-        dpo_zip_code: "",
-        dpo_country_code: "",
-        dpo_city: "",
-        dpo_lat: 0.0,
-        dpo_lon: 0.0,
-        dpo_loading_minute: 0,
-        ord_code: "",
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_image: "",
-        itm_material_number: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_unit_desc: "",
-        itm_unit_short_desc: "",
-        item_quantity: 0,
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        ptrl_country_code: "",
-        ptrl_city: "",
-        ptrl_lat: 0.0,
-        ptrl_lon: 0.0,
-        ptrl_unloading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-    },];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1135,46 +1020,7 @@ exports.getOrderItemInformationformanagePlan = async (req, res, next) => {
 }
 exports.getOrderItemInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ord_item_code: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        dpo_address: "",
-        dpo_zip_code: "",
-        dpo_country_code: "",
-        dpo_city: "",
-        dpo_lat: 0.0,
-        dpo_lon: 0.0,
-        dpo_loading_minute: 0,
-        ord_code: "",
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_image: "",
-        itm_material_number: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_unit_desc: "",
-        itm_unit_short_desc: "",
-        item_quantity: 0,
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        ptrl_country_code: "",
-        ptrl_city: "",
-        ptrl_lat: 0.0,
-        ptrl_lon: 0.0,
-        ptrl_unloading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1295,23 +1141,7 @@ exports.getOrderItemInformation = async (req, res, next) => {
 
 exports.getOrderDepotInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ord_code: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        dpo_address: "",
-        dpo_zip_code: "",
-        dpo_country_code: "",
-        dpo_lat: 0.0,
-        dpo_lon: 0.0,
-        dpo_city: "",
-        dpo_loading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1410,23 +1240,7 @@ exports.getOrderDepotInformation = async (req, res, next) => {
 
 exports.getOrderPetrolInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ord_code: "",
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        ptrl_country_code: "",
-        ptrl_lat: 0.0,
-        ptrl_lon: 0.0,
-        ptrl_city: "",
-        ptrl_unloading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -2605,42 +2419,7 @@ exports.addOrderInformationWithPreEvent = async (req, res, next) => {
 
 exports.getOrderTMPStatusInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ord_code: "",
-        shipments_code: "",
-        transport_code: "",
-        tour_code: "",
-        pull_code: "",
-        number: "",
-        document_reference: "",
-        plant: "",
-        assigned_carrier_id: "",
-        assigned_carrier_name: "",
-        assigned_creditor_number: "",
-        assigned_carrier_number: "",
-        ord_dt: "",
-        req_dt: "",
-        ord_status: "",
-        ord_comment: "",
-        ord_customer_code: "",
-        ord_customer_name: "",
-        ord_customer_number: "",
-        gsap_order_type_code: "",
-        gsap_order_status: "",
-        gsap_order_number: "",
-        ord_type_code: "",
-        ord_type_desc: "",
-        transporeon_status: "",
-        loading_count: 0,
-        unloading_count: 0,
-        item_count: 0,
-        item_quantity: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        off_code: "",
-        ord_flag: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

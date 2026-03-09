@@ -9,51 +9,7 @@ const dbPrefix = config.dbPrefix();
 
 exports.getReportALSInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_group_desc: "",
-        ptrl_group_code: "",
-        carrier_name: "",
-        tms_transport_code: "",
-        shipments_code: "",
-        job_dt: "",
-        shift: "",
-        veh_number: "",
-        veh_license_number: "",
-        trip: 0,
-        count_drop: "",
-        gsap_order_number: "",
-        gsap_shipments_number: "",
-        transit_start_dt: "",
-        transit_end_dt: "",
-        transit_minute: 0,
-        distance: 0,
-        uom_km: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_address: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        itm_material_number: "",
-        itm_desc: "",
-        item_quantity: 0,
-        uom_l: "",
-        delivery: "",
-        time_window: "",
-        dseq: 0,
-        job_status: "",
-        trip_type: "",
-        item_weight: 0,
-        uom_kg: "",
-        ord_comment: "",
-        loading_start_dt: "",
-        loading_end_dt: "",
-        unloading_start_dt: "",
-        unloading_end_dt: "",
-        ptrl_tank_code: "",
-        tnk_number: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -230,51 +186,7 @@ exports.getReportALSInformation = async (req, res, next) => {
 
 exports.getReportALSInformationV2 = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_group_desc: "",
-        ptrl_group_code: "",
-        carrier_name: "",
-        tms_transport_code: "",
-        shipments_code: "",
-        job_dt: "",
-        shift: "",
-        veh_number: "",
-        veh_license_number: "",
-        trip: 0,
-        count_drop: "",
-        gsap_order_number: "",
-        gsap_shipments_number: "",
-        transit_start_dt: "",
-        transit_end_dt: "",
-        transit_minute: 0,
-        distance: 0,
-        uom_km: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_address: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        itm_material_number: "",
-        itm_desc: "",
-        item_quantity: 0,
-        uom_l: "",
-        delivery: "",
-        time_window: "",
-        dseq: 0,
-        job_status: "",
-        trip_type: "",
-        item_weight: 0,
-        uom_kg: "",
-        ord_comment: "",
-        loading_start_dt: "",
-        loading_end_dt: "",
-        unloading_start_dt: "",
-        unloading_end_dt: "",
-        ptrl_tank_code: "",
-        tnk_number: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -458,17 +370,7 @@ exports.getReportALSInformationV2 = async (req, res, next) => {
 
 exports.getReportTripForUploadInformation = async (req, res, next) => {
 
-    var xresult = [{
-        shell_code: "",
-        trip: 0,
-        dseq: 0,
-        ptrl_number: "",
-        gsap_shipments_number: "",
-        tms_transport_code: "",
-        dpo_number: "",
-        veh_number: "",
-        item_quantity: 0
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -708,17 +610,7 @@ exports.getReportTripForUploadInformation = async (req, res, next) => {
 
 exports.getReportTripForUploadInformationV2 = async (req, res, next) => {
 
-    var xresult = [{
-        shell_code: "",
-        trip: 0,
-        dseq: 0,
-        ptrl_number: "",
-        gsap_shipments_number: "",
-        tms_transport_code: "",
-        dpo_number: "",
-        veh_number: "",
-        item_quantity: 0
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -968,45 +860,7 @@ exports.getReportTripForUploadInformationV2 = async (req, res, next) => {
 
 exports.getReportTripInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_group_desc: "",
-        shell_desc: "",
-        gsap_shipments_number: "",
-        shipments_code: "",
-        tms_transport_code: "",
-        transit_start_dt: "",
-        transit_end_dt: "",
-        transit_minute: 0,
-        loading_dt: "",
-        total_date: 0,
-        trip: 0,
-        dseq: 0,
-        total_driver: 0,
-        unloading_count: 0,
-        distance: 0,
-        ptrl_number: "",
-        ptrl_desc: "",
-        dpo_number: "",
-        dpo_desc: "",
-        job_comment: "",
-        veh_number: "",
-        veh_license_number: "",
-        dver_name: "",
-        dver_surname: "",
-        item_quantity: 0,
-        item_desc1: "",
-        item_quantity1: 0,
-        item_desc2: "",
-        item_quantity2: 0,
-        item_desc3: "",
-        item_quantity3: 0,
-        item_desc4: "",
-        item_quantity4: 0,
-        item_desc5: "",
-        item_quantity5: 0,
-        item_desc6: "",
-        item_quantity6: 0
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1147,23 +1001,7 @@ exports.getReportTripInformation = async (req, res, next) => {
 
 exports.getReportTaskPlan = async (req, res, next) => {
 
-    var xresult = [{
-        trip_sequence: 0,
-        veh_group_code: "",
-        veh_group_desc: "",
-        veh_number: "",
-        veh_license_number: "",
-        job_dt: "",
-        tms_transport_code: "",
-        transit_minute: 0.0,
-        distance: 0.0,
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_address: "",
-        item_quantity: 0,
-        routes: []
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1480,69 +1318,7 @@ exports.getReportTaskPlan = async (req, res, next) => {
 
 exports.getPresendPostsend = async (req, res, next) => {
 
-    var xresult = [{
-        ord_item_code: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        dpo_address: "",
-        dpo_zip_code: "",
-        dpo_country_code: "",
-        dpo_lat: 0.0,
-        dpo_lon: 0.0,
-        dpo_city: "",
-        dpo_loading_minute: 0,
-        ord_code: "",
-        itm_code: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        itm_image: "",
-        itm_material_number: "",
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_unit_code: "",
-        itm_unit_desc: "",
-        itm_unit_short_desc: "",
-        item_quantity: 0,
-        ptrl_code: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_address: "",
-        ptrl_zip_code: "",
-        ptrl_country_code: "",
-        ptrl_lat: 0.0,
-        ptrl_lon: 0.0,
-        ptrl_city: "",
-        ptrl_unloading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: "",
-        ptrl_tank_code: "",
-        tnk_number: "",
-        shipments_code_new: "",
-        ord_code_new: "",
-        itm_code_new: "",
-        ptrl_tank_code_new: "",
-        job_code: "",
-        job_status: "",
-        transporeon_status: "",
-        job_comment: "",
-        tms_transport_code: "",
-        shipments_code: "",
-        unloading_start_dt: "",
-        deadlock_dt: "",
-        tnk_capacity: 0,
-        tnk_target: 0,
-        tnk_deadstock: 0,
-        expected_quantity: 0,
-        book_stock: 0,
-        book_stock_dt: "",
-        average_daily_sales: 0,
-        veh_group_desc: "",
-        ptrl_group_desc: ""
-    },];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1740,25 +1516,7 @@ exports.getPresendPostsend = async (req, res, next) => {
 exports.getDischarge = async (req, res, next) => {
 
     debugger
-    var xresult = [{
-        tms_transport_code: "",
-        discharged: "",
-        redirect: "",
-        gsap_shipments_number: "",
-        gsap_order_number: "",
-        veh_number: "",
-        veh_license_number: "",
-        ptrl_number: "",
-        ptrl_desc: "",
-        itm_material_number: "",
-        itm_desc: "",
-        itm_short_desc: "",
-        item_quantity: 0,
-        unloading_start_dt: "",
-        unloading_end_dt: "",
-        tnk_number: "",
-        veh_compartment_number: ""
-    },];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
@@ -1887,45 +1645,7 @@ exports.getDischarge = async (req, res, next) => {
 
 exports.getReportTripInformationV2 = async (req, res, next) => {
 
-    var xresult = [{
-        veh_group_desc: "",
-        shell_desc: "",
-        gsap_shipments_number: "",
-        shipments_code: "",
-        tms_transport_code: "",
-        transit_start_dt: "",
-        transit_end_dt: "",
-        transit_minute: 0,
-        loading_dt: "",
-        total_date: 0,
-        trip: 0,
-        dseq: 0,
-        total_driver: 0,
-        unloading_count: 0,
-        distance: 0,
-        ptrl_number: "",
-        ptrl_desc: "",
-        dpo_number: "",
-        dpo_desc: "",
-        job_comment: "",
-        veh_number: "",
-        veh_license_number: "",
-        dver_name: "",
-        dver_surname: "",
-        item_quantity: 0,
-        item_desc1: "",
-        item_quantity1: 0,
-        item_desc2: "",
-        item_quantity2: 0,
-        item_desc3: "",
-        item_quantity3: 0,
-        item_desc4: "",
-        item_quantity4: 0,
-        item_desc5: "",
-        item_quantity5: 0,
-        item_desc6: "",
-        item_quantity6: 0
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

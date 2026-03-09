@@ -9,15 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getItemTypeInformation = async (req, res, next) => {
 
-    var xresult = [{
-        itm_type_code: "",
-        itm_type_desc: "",
-        itm_type_short_desc: "",
-        itm_type_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

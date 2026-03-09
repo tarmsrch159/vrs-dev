@@ -9,18 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getPetrolExpensesInformation = async (req, res, next) => {
 
-    var xresult = [{
-        ptrl_expenses_code: "",
-        ptrl_code: "",
-        ptrl_desc: "",
-        ptrl_short_desc: "",
-        ptrl_expenses_desc: "",
-        ptrl_expenses: 0.0,
-        ptrl_expenses_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

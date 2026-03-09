@@ -8,14 +8,7 @@ const dbPrefix = config.dbPrefix();
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getDriverGroupInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_group_code: "",
-        dver_group_desc: "",
-        dver_group_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

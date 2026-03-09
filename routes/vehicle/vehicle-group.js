@@ -9,18 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getVehicleGroupTableInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_group_code: "",
-        veh_group_desc: "",
-        veh_group_flag: "",
-        dpo_count: 0,
-        veh_count: 0,
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -126,19 +115,7 @@ exports.getVehicleGroupTableInformation = async (req, res, next) => {
 
 exports.getVehicleGroupInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_group_code: "",
-        veh_group_desc: "",
-        veh_group_flag: "",
-        veh_yard_desc: "",
-        veh_yard_lon: 0.0,
-        veh_yard_lat: 0.0,
-        off_code: "",
-        off_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

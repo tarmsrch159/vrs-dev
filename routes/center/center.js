@@ -281,9 +281,7 @@ const dCreate = async (database) => {
 
 exports.addLicenseFuelInformation = async (req, res, next) => {
 
-    var xresult = [{
-        license_number: ""
-    }];
+    var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');

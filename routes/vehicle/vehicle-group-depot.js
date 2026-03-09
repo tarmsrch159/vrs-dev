@@ -9,21 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getVehicleGroupDepotInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_group_depot_code: "",
-        veh_group_code: "",
-        veh_group_desc: "",
-        veh_group_flag: "",
-        off_code: "",
-        off_desc: "",
-        dpo_code: "",
-        dpo_number: "",
-        dpo_desc: "",
-        dpo_short_desc: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

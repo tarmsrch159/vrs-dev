@@ -9,16 +9,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getVehicleTypeInformationWithDetail = async (req, res, next) => {
 
-    var xresult = [{
-        veh_type_code: "",
-        veh_type_desc: "",
-        veh_type_flag: "",
-        unloading_minute: 0,
-        loading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -229,16 +220,7 @@ exports.getVehicleTypeInformationWithDetail = async (req, res, next) => {
 
 exports.getVehicleTypeCompartmentInformationWithDetail = async (req, res, next) => {
 
-    var xresult = [{
-        veh_type_code: "",
-        veh_type_desc: "",
-        veh_type_flag: "",
-        unloading_minute: 0,
-        loading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -413,16 +395,7 @@ exports.getVehicleTypeCompartmentInformationWithDetail = async (req, res, next) 
 
 exports.getVehicleTypeInformation = async (req, res, next) => {
 
-    var xresult = [{
-        veh_type_code: "",
-        veh_type_desc: "",
-        veh_type_flag: "",
-        unloading_minute: 0,
-        loading_minute: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -570,15 +543,7 @@ exports.getVehicleTypeInformation = async (req, res, next) => {
 
 exports.getCompartmentItem = async (req, res, next) => {
 
-    var xresult = [{
-        compartment_no: "",
-        compartment_total: 0,
-        compartment_max: 0,
-        compartment_min: 0,
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
@@ -712,17 +677,7 @@ exports.getCompartmentItem = async (req, res, next) => {
 
 exports.getCompartmentTypeLevelItem = async (req, res, next) => {
 
-    var xresult = [{
-        compartment_item_id: null,
-        veh_compartment_type_code: "",
-        veh_compartment_level_type_code: "",
-        veh_compartment_type_level_number: "",
-        veh_compartment_type_level: null,
-        veh_compartment_type_level_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 

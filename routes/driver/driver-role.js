@@ -10,14 +10,7 @@ const dbPrefix = config.dbPrefix();
 //Success
 exports.getDriverRoleInformation = async (req, res, next) => {
 
-    var xresult = [{
-        dver_role_code: "",
-        dver_role_desc: "",
-        dver_role_flag: "",
-        ist_dt: "",
-        mdf_dt: "",
-        rm_dt: ""
-    }];
+    var xresult = [];
 
     return (async () => {
 
