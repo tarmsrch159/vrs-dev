@@ -17,7 +17,7 @@ router.post('/information', order.getOrderInformation);
 router.put('/information', order.addOrderInformation);
 router.patch('/information', order.setOrderInformation);
 router.delete('/information/remove', order.removeOrderInformationById);
-router.post('/runout/check', order.checkOrderRunout);
+router.post('/runout/information', order.getOrderRunout);
 
 //order for accept
 // router.post('/tmp-status/information', order.getOrderTMPStatusInformation);

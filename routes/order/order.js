@@ -608,7 +608,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
 // Mockup: กำหนดเวลา runout (นาที)
 const RUNOUT_TIMEOUT_MINUTES = 5;
 
-exports.checkOrderRunout = async (req, res, next) => {
+exports.getOrderRunout = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
