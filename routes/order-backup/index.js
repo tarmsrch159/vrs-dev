@@ -14,16 +14,18 @@ const order_calculate = require('./order-calculate');
 
 //order
 router.post('/information', order.getOrderInformation);
-router.post('/runout/information', order.getOrderRunout);
-router.post('/report/information', order.getOrderReport);
-router.put('/information', order.addOrderInformation);
-router.patch('/information', order.setOrderInformation);
-router.delete('/information/remove', order.removeOrderInformationById);
+router.post('/run-number/information', order.getRunNumberOrderInformation);
+router.post('/item/information', order.getOrderItemInformation);
+router.post('/item/information/managePlan', order.getOrderItemInformationformanagePlan);
+router.post('/depot/information', order.getOrderDepotInformation);
+router.post('/petrol/information', order.getOrderPetrolInformation);
+router.put('/information', order.addOrderInformationWithPreEvent);
+router.put('/upload/information', order.addOrderUploadInformationWithPreEvent);
 
 //order for accept
-// router.post('/tmp-status/information', order.getOrderTMPStatusInformation);
-// router.post('/tmp-status/accept/information', order.setAceptOrderTMPStatusInformation);
-// router.post('/tmp-status/decline/information', order.setDeclineOrderTMPStatusInformation);
+router.post('/tmp-status/information', order.getOrderTMPStatusInformation);
+router.post('/tmp-status/accept/information', order.setAceptOrderTMPStatusInformation);
+router.post('/tmp-status/decline/information', order.setDeclineOrderTMPStatusInformation);
 
 //sync order
 // router.post('/sync/non-vmi/information', order_sync_non_vmi.getOrderNonVMIInformation);
@@ -31,13 +33,13 @@ router.delete('/information/remove', order.removeOrderInformationById);
 // router.post('/sync/vmi/information', order_sync_vmi.getOrderVMIInformation);
 
 //confirm
-// router.post('/confirm/information', order.setConfirmedOrderInformation);
-// router.post('/cancel/information', order.setCanceldOrderInformation);
+router.post('/confirm/information', order.setConfirmedOrderInformation);
+router.post('/cancel/information', order.setCanceldOrderInformation);
 //plan
 router.post('/vehicle/information', order_vehicle.getVehicleOfOrderInformation);
 router.post('/driver/information', order_driver.getDriverOfOrderInformation);
-// router.post('/assign-jobs/information', order.setAssignJobsOrderInformation);
-// router.post('/cancel-jobs/information', order.setCancelJobsOrderInformation);
+router.post('/assign-jobs/information', order.setAssignJobsOrderInformation);
+router.post('/cancel-jobs/information', order.setCancelJobsOrderInformation);
 router.post('/expenses/information', order_expenses.getExpensesOfOrderInformation);
 router.post('/route/information', order_route.getRouteOfOrderInformation);
 router.patch('/route/information', order_route.setRouteOfOrderInformation);
