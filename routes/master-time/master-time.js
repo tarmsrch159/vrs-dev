@@ -36,7 +36,7 @@ exports.getMasterTimeInformation = async (req, res, next) => {
             return;
         } else {
 
-            const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
+            const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/; dd
 
             if (time_value != undefined && time_value.toString().toUpperCase() != 'ALL' && !timeFormatRegex.test(time_value.toString())) {
                 let response = [{
@@ -47,7 +47,7 @@ exports.getMasterTimeInformation = async (req, res, next) => {
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }];
                 res.status(200).send(response);
-                return;
+
             }
 
             let script = ``;
@@ -192,7 +192,8 @@ exports.addMasterTimeInformation = async (req, res, next) => {
         }
 
         let script = ``;
-
+        let invalid_time_data = []; // ตัวแปรสำหรับเก็บรายการที่ Format ผิด
+        let success_count = 0;
         // Step 1: Insert tbl_master_time
         if (time_data && Array.isArray(time_data) && time_data.length > 0) {
             for (var i = 0; i <= time_data.length - 1; i++) {
@@ -200,16 +201,10 @@ exports.addMasterTimeInformation = async (req, res, next) => {
                 var time_value = time_data[i].time_value;
 
                 const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
+
                 if (time_value && !timeFormatRegex.test(time_value)) {
-                    let response = [{
-                        status: 'error',
-                        invalid_code: '-1',
-                        message: 'กรุณาใส่รูปแบบเวลาให้ถูกต้อง',
-                        data: [],
-                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-                    }];
-                    res.status(200).send(response);
-                    return;
+                    invalid_time_data.push(time_data[i]);
+                    continue;
                 }
 
                 script = `INSERT INTO public.tbl_master_time 
@@ -232,14 +227,31 @@ exports.addMasterTimeInformation = async (req, res, next) => {
                     await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูล Order', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล Order', action[0].value);
                     return;
                 }
+                success_count++;
             } // ปิด for loop
+
+            let responseMessage = '';
+
+            if (invalid_time_data.length > 0) {
+                if (success_count === 0) {
+                    // กรณีผิดหมดเลย ไม่มีอันไหนถูก Insert ได้เลย
+
+                    responseMessage = 'ไม่สามารถบันทึกได้ รูปแบบเวลาไม่ถูกต้องทั้งหมด';
+                } else {
+                    // กรณีมีทั้งตัวที่ Insert ผ่าน และตัวที่ Format ผิด
+                    responseMessage = `บันทึกข้อมูลสำเร็จ ${success_count} รายการ, รูปแบบเวลาไม่ถูกต้อง ${invalid_time_data.length} รายการ`;
+                }
+            } else {
+                // กรณีผ่านหมดทุกตัว
+                responseMessage = 'บันทึกข้อมูลสำเร็จทั้งหมด';
+            }
 
             // Success response (ต้องอยู่นอก for loop เพื่อให้ loop ทำงานเสร็จก่อนค่อยส่ง response)
             let response = [{
                 status: 'success',
                 invalid_code: '0',
-                message: '',
-                data: [],
+                message: responseMessage,
+                invalid_time_data: invalid_time_data,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
