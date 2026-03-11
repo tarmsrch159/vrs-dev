@@ -33,7 +33,22 @@ exports.getMasterTimeInformation = async (req, res, next) => {
             }]
 
             res.status(200).send(response);
+            return;
         } else {
+
+            const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
+
+            if (time_value != undefined && time_value.toString().toUpperCase() != 'ALL' && !timeFormatRegex.test(time_value.toString())) {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-1',
+                    message: 'กรุณาใส่รูปแบบเวลาให้ถูกต้อง',
+                    data: xresult,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
+                res.status(200).send(response);
+                return;
+            }
 
             let script = ``;
             if (page_index > 0) {
@@ -183,6 +198,20 @@ exports.addMasterTimeInformation = async (req, res, next) => {
             for (var i = 0; i <= time_data.length - 1; i++) {
                 var time_code = time_data[i].time_code;
                 var time_value = time_data[i].time_value;
+
+                const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
+                if (time_value && !timeFormatRegex.test(time_value)) {
+                    let response = [{
+                        status: 'error',
+                        invalid_code: '-1',
+                        message: 'กรุณาใส่รูปแบบเวลาให้ถูกต้อง',
+                        data: [],
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }];
+                    res.status(200).send(response);
+                    return;
+                }
+
                 script = `INSERT INTO public.tbl_master_time 
                 (time_code, time_value, ist_dt, master_time_flag) 
                 VALUES 
