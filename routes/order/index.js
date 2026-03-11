@@ -14,10 +14,11 @@ const order_calculate = require('./order-calculate');
 
 //order
 router.post('/information', order.getOrderInformation);
+router.post('/runout/information', order.getOrderRunout);
+router.post('/report/information', order.getOrderReport);
 router.put('/information', order.addOrderInformation);
 router.patch('/information', order.setOrderInformation);
 router.delete('/information/remove', order.removeOrderInformationById);
-router.post('/runout/information', order.getOrderRunout);
 
 //order for accept
 // router.post('/tmp-status/information', order.getOrderTMPStatusInformation);

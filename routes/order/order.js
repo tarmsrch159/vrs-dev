@@ -246,6 +246,208 @@ exports.getOrderInformation = async (req, res, next) => {
     });
 }
 
+
+exports.getOrderReport = async (req, res, next) => {
+
+    var xresult = [];
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { order_no, req_dt, ptrl_tank_code, itm_code, off_code,
+            search, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (req_dt == undefined || order_no == undefined || off_code == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+        } else {
+
+            let script = ``;
+            if (page_index > 0) {
+                page_index -= 1;
+            }
+
+            if (order_no.toString().toUpperCase() != 'ALL') {
+                script = `select 
+                tbl_order_petrol.ord_code,
+                tbl_order.cus_date_ref,
+               json_agg(json_build_object(
+                    'ord_petrol_code', tbl_order_petrol.ord_petrol_code,
+                    'shipto', tbl_petrol.ptrl_number,
+                    'station', tbl_petrol.ptrl_desc,
+                    'req_dt', tbl_order_petrol.req_dt,
+                    'ptrl_tank_code', tbl_order_petrol.ptrl_tank_code,
+                    'tnk_number', tbl_petrol_tank.tnk_number,
+                    'itm_code', tbl_order_petrol.itm_code,
+                    'itm_desc', tbl_item.itm_desc,
+                    'item_qty', tbl_order_petrol.item_quantity
+                )) as items
+                from tbl_order_petrol 
+                left join tbl_petrol on tbl_order_petrol.ptrl_code = tbl_petrol.ptrl_code
+                left join tbl_item on tbl_order_petrol.itm_code = tbl_item.itm_code
+                left join tbl_petrol_tank on tbl_order_petrol.ptrl_tank_code = tbl_petrol_tank.ptrl_tank_code
+                left join tbl_order on tbl_order_petrol.ord_code = tbl_order.order_no
+                where tbl_order_petrol.rm_dt IS NULL and tbl_order_petrol.ord_code = '${order_no}'
+                `;
+            }
+            else {
+                script = `select 
+                tbl_order_petrol.ord_code,
+                tbl_order.cus_date_ref,
+               json_agg(json_build_object(
+                    'ord_petrol_code', tbl_order_petrol.ord_petrol_code,
+                    'shipto', tbl_petrol.ptrl_number,
+                    'station', tbl_petrol.ptrl_desc,
+                    'req_dt', tbl_order_petrol.req_dt,
+                    'ptrl_tank_code', tbl_order_petrol.ptrl_tank_code,
+                    'tnk_number', tbl_petrol_tank.tnk_number,
+                    'itm_code', tbl_order_petrol.itm_code,
+                    'itm_desc', tbl_item.itm_desc,
+                    'item_qty', tbl_order_petrol.item_quantity
+                )) as items
+                from tbl_order_petrol 
+                left join tbl_petrol on tbl_order_petrol.ptrl_code = tbl_petrol.ptrl_code
+                left join tbl_item on tbl_order_petrol.itm_code = tbl_item.itm_code
+                left join tbl_petrol_tank on tbl_order_petrol.ptrl_tank_code = tbl_petrol_tank.ptrl_tank_code
+                left join tbl_order on tbl_order_petrol.ord_code = tbl_order.order_no
+                where tbl_order_petrol.rm_dt IS NULL
+                `;
+            }
+
+
+
+            if (req_dt.toString().toUpperCase() != 'ALL') {
+                if (req_dt.length == 10) {
+
+                    script += ` and tbl_order.cus_date_ref >= '${req_dt} 00:00:00' and tbl_order.cus_date_ref <= '${req_dt} 23:59:59' `
+                } else {
+
+                    script += ` and tbl_order.cus_date_ref >= '${req_dt}' `
+                }
+            }
+
+            if (ptrl_tank_code.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order_petrol.ptrl_tank_code = '${ptrl_tank_code}' `
+            }
+
+            if (itm_code.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order_petrol.itm_code = '${itm_code}' `
+            }
+            script += ` 
+                group by 
+                tbl_order_petrol.ord_code,
+                tbl_order.cus_date_ref`
+
+            script += ` order by max(tbl_order_petrol.ist_dt) desc `
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
+
+            console.log(script);
+            let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+            if (!tbl_temporary.code) {
+                //debugger
+                if (tbl_temporary.data.length > 0) {
+                    tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+
+                    let page_total = 0;
+                    let rows_total = 0;
+                    script = ``
+                    if (order_no.toString().toUpperCase() != 'ALL') {
+                        script = `
+                        select ceil((ceil(sum(rows_total)) / ${page_limit})) as page_total, sum(rows_total) as rows_total  
+                        from (select 1 as rows_total from tbl_order_petrol 
+                        where tbl_order_petrol.rm_dt IS NULL and tbl_order_petrol.ord_code = '${order_no}' `;
+                    }
+                    else {
+                        script = `
+                        select ceil((ceil(sum(rows_total)) / ${page_limit})) as page_total, sum(rows_total) as rows_total  
+                        from (select 1 as rows_total from tbl_order_petrol 
+                        where tbl_order_petrol.rm_dt IS NULL `;
+                    }
+
+                    if (off_code != undefined && off_code.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order_petrol.division = '${off_code}' `
+                    }
+
+
+
+
+                    if (req_dt.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order_petrol.req_dt >= '${req_dt}'`
+                    }
+
+                    script += `) xtbl_master `
+
+
+                    let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+                    if (!tbl_temporary0.code) {
+                        if (tbl_temporary0.data.length > 0) {
+                            page_total = parseInt(tbl_temporary0.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary0.data[0].rows_total);
+                        }
+                    }
+
+
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: tbl_temporary.data,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                        page_total: (page_total <= 0 ? 1 : page_total),
+                        rows_total: rows_total
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                } else {
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: xresult,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                }
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: xresult,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: xresult,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+    });
+}
+
+
 exports.addOrderInformation = async (req, res, next) => {
 
     return (async () => {
