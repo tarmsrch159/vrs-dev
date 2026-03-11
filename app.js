@@ -27,6 +27,7 @@ var centerRouter = require('./routes/center/index');
 var jobRouter = require('./routes/job/index');
 var trackingRouter = require('./routes/tracking/index');
 var reportRouter = require('./routes/report/index');
+var masterTimeRouter = require('./routes/master-time/index');
 var app = express();
 var cors = require('cors');
 var config = require('./configuration/connection');
@@ -306,6 +307,8 @@ app.use('/api-tms-v2/job', jobRouter);
 app.use('/api-tms-v2/tracking', trackingRouter);
 //Report
 app.use('/api-tms-v2/report', reportRouter);
+//MasterTime
+app.use('/api-tms-v2/master-time', masterTimeRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
