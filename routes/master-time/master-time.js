@@ -36,7 +36,7 @@ exports.getMasterTimeInformation = async (req, res, next) => {
             return;
         } else {
 
-            const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/; dd
+            const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
 
             if (time_value != undefined && time_value.toString().toUpperCase() != 'ALL' && !timeFormatRegex.test(time_value.toString())) {
                 let response = [{

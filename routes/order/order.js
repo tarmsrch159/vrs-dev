@@ -15,7 +15,7 @@ exports.getOrderInformation = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { order_no, start_date, end_date, order_type, ord_status, off_code,
+        let { order_no, start_date, end_date, order_type, ord_status,
             search, page_index, page_limit, action } = req.body[0];
         page_index == undefined ? page_index = 1 : page_index;
         page_limit == undefined ? page_limit = 10 : page_limit;
@@ -50,6 +50,8 @@ exports.getOrderInformation = async (req, res, next) => {
             if (order_no.toString().toUpperCase() != 'ALL') {
                 script = `select 
                 tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
+                tbl_order_type.ord_type_desc,
+                tbl_petrol_group.ptrl_group_desc,
                 tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
                 tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
                 tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_order.deli_time_req as RequestTime, 
@@ -68,19 +70,28 @@ exports.getOrderInformation = async (req, res, next) => {
                     'product', tbl_item.itm_desc,
                     'item_qty', tbl_order_item.item_qty,
                     'long_text_id', tbl_order_item.long_text_id,
-                    'long_text', tbl_order_item.long_text
+                    'long_text', tbl_order_item.long_text,
+                    'auto_order', tbl_order_item.auto_order 
                 ) as item_information,
                  tbl_order.auto_order
                 from tbl_order 
-                left join tbl_order_item on tbl_order.order_no = tbl_order_item.order_no
+                left join tbl_order_type on tbl_order.order_type = tbl_order_type.ord_type_code
+                left join tbl_petrol_group on tbl_petrol_group.ptrl_group_code = tbl_order.order_group
                 left join tbl_order_petrol on tbl_order.order_no = tbl_order_petrol.ord_code and tbl_order_petrol.ord_petrol_flag = '1'
                 left join tbl_petrol on tbl_order_petrol.ptrl_code = tbl_petrol.ptrl_code
                 left join tbl_item on tbl_order_petrol.itm_code = tbl_item.itm_code
-                where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' `;
+                left join (
+                    SELECT DISTINCT ON (order_no, item_no) * FROM tbl_order_item 
+                    WHERE rm_dt IS NULL 
+                    ORDER BY order_no, item_no, ist_dt DESC
+                ) tbl_order_item on tbl_order.order_no = tbl_order_item.order_no and tbl_order_petrol.itm_code = tbl_order_item.item_no
+                where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' and tbl_order_item.auto_order = '0' `;
             }
             else {
                 script = `select 
                 tbl_order.id, tbl_order.order_no, tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
+                tbl_order_type.ord_type_desc,
+                tbl_petrol_group.ptrl_group_desc,
                 tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
                 tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
                 tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_order.deli_time_req as request_time, 
@@ -99,19 +110,22 @@ exports.getOrderInformation = async (req, res, next) => {
                     'product', tbl_item.itm_desc,
                     'item_qty', tbl_order_item.item_qty,
                     'long_text_id', tbl_order_item.long_text_id,
-                    'long_text', tbl_order_item.long_text
+                    'long_text', tbl_order_item.long_text,
+                    'auto_order', tbl_order_item.auto_order 
                 ) as item_information,
                  tbl_order.auto_order
                 from tbl_order 
-                left join tbl_order_item on tbl_order.order_no = tbl_order_item.order_no 
+                left join tbl_order_type on tbl_order.order_type = tbl_order_type.ord_type_code
+                left join tbl_petrol_group on tbl_petrol_group.ptrl_group_code = tbl_order.order_group
                 left join tbl_order_petrol on tbl_order.order_no = tbl_order_petrol.ord_code and tbl_order_petrol.ord_petrol_flag = '1'
                 left join tbl_petrol on tbl_order_petrol.ptrl_code = tbl_petrol.ptrl_code
                 left join tbl_item on tbl_order_petrol.itm_code = tbl_item.itm_code
-                where tbl_order.rm_dt IS NULL `;
-            }
-
-            if (off_code != undefined && off_code.toString().toUpperCase() != 'ALL') {
-                script += ` and tbl_order.division = '${off_code}' `
+                left join (
+                    SELECT DISTINCT ON (order_no, item_no) * FROM tbl_order_item 
+                    WHERE rm_dt IS NULL 
+                    ORDER BY order_no, item_no, ist_dt DESC
+                ) tbl_order_item on tbl_order.order_no = tbl_order_item.order_no and tbl_order_petrol.itm_code = tbl_order_item.item_no
+                where tbl_order.rm_dt IS NULL and tbl_order_item.auto_order = '0' `;
             }
 
             if (ord_status.toString().toUpperCase() != 'ALL') {
@@ -159,9 +173,7 @@ exports.getOrderInformation = async (req, res, next) => {
                         where tbl_order.rm_dt IS NULL `;
                     }
 
-                    if (off_code != undefined && off_code.toString().toUpperCase() != 'ALL') {
-                        script += ` and tbl_order.division = '${off_code}' `
-                    }
+
 
                     if (ord_status.toString().toUpperCase() != 'ALL') {
                         script += ` and tbl_order.status_deli = '${ord_status}' `
@@ -247,18 +259,211 @@ exports.getOrderInformation = async (req, res, next) => {
 }
 
 
+exports.getLoggingOrderInformation = async (req, res, next) => {
+
+    var xresult = [];
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { action_desc, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (action_desc == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+        } else {
+
+            let script = ``;
+            if (page_index > 0) {
+                page_index -= 1;
+            }
+
+            script = `select 
+                tbl_action_logs.action_code as action_by,
+                tbl_action_logs.action_desc as event_type,
+                tbl_action_logs.action_body,
+                tbl_action_logs.ist_dt as action_date
+                from tbl_action_logs 
+                where tbl_action_logs.rm_dt IS NULL `;
+
+            if (action_desc && action_desc.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_action_logs.action_desc = '${action_desc}' `;
+            } else {
+                script += ` and tbl_action_logs.action_desc = 'override' or tbl_action_logs.action_desc = 'manual' or tbl_action_logs.action_desc = 'cancel' `;
+            }
+
+            script += ` order by tbl_action_logs.ist_dt desc `
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
+            console.log(script)
+            let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+            if (!tbl_temporary.code) {
+                //debugger
+                if (tbl_temporary.data.length > 0) {
+                    let rawData = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+
+                    let processedData = [];
+                    for (let i = 0; i < rawData.length; i++) {
+                        let item = rawData[i];
+                        let parsedBody = null;
+                        try {
+                            if (item.action_body && typeof item.action_body === 'string') {
+                                parsedBody = JSON.parse(item.action_body);
+                            } else if (typeof item.action_body === 'object') {
+                                parsedBody = item.action_body;
+                            }
+                        } catch (e) {
+                            console.log("Parse JSON Error on action_body:", e.message);
+                        }
+
+                        let flatItem = {
+                            event_type: item.event_type,
+                            action_by: item.action_by,
+                            action_date: item.action_date,
+                            log_data: parsedBody || item.action_body
+                        };
+
+                        if (parsedBody) {
+                            // Extract common fields if they exist
+                            let bodyContent = parsedBody.body || parsedBody;
+                            flatItem.reason = bodyContent.reason || bodyContent.remark || '';
+                            flatItem.log_data = bodyContent;
+
+                            let extracted_order = parsedBody.query?.order_no || bodyContent.query?.order_no || bodyContent.order_no || parsedBody.order_no || '';
+                            if (Array.isArray(extracted_order)) {
+                                flatItem.order_no = extracted_order.join(', ');
+                            } else {
+                                flatItem.order_no = extracted_order;
+                            }
+                        }
+
+                        if (flatItem.order_no && flatItem.order_no !== '') {
+                            let orderNoArr = flatItem.order_no.split(',').map(o => `'${o.trim()}'`).join(', ');
+                            let stationScript = `
+                                select t2.ptrl_number, t2.ptrl_desc 
+                                from tbl_order_petrol t1
+                                left join tbl_petrol t2 on t1.ptrl_code = t2.ptrl_code 
+                                where t1.ord_code in (${orderNoArr}) and t1.ord_petrol_flag = '1'
+                            `;
+                            let stationTemp = await pgConn.get(dbPrefix + lic_code, stationScript, config.connectionString());
+                            if (!stationTemp.code && stationTemp.data.length > 0) {
+                                flatItem.ptrl_number = [...new Set(stationTemp.data.map(s => s.ptrl_number).filter(Boolean))].join(', ');
+                                flatItem.ptrl_desc = [...new Set(stationTemp.data.map(s => s.ptrl_desc).filter(Boolean))].join(', ');
+                            } else {
+                                flatItem.ptrl_number = '';
+                                flatItem.ptrl_desc = '';
+                            }
+                        } else {
+                            flatItem.ptrl_number = '';
+                            flatItem.ptrl_desc = '';
+                        }
+
+                        processedData.push(flatItem);
+                    }
+                    tbl_temporary.data = processedData;
+
+                    let page_total = 0;
+                    let rows_total = 0;
+                    script = ``
+                    if (action_desc.toString().toUpperCase() != 'ALL') {
+                        script = `
+                        select ceil((ceil(sum(rows_total)) / ${page_limit})) as page_total, sum(rows_total) as rows_total  
+                        from (select 1 as rows_total from tbl_action_logs 
+                        where tbl_action_logs.rm_dt IS NULL and tbl_action_logs.action_desc = '${action_desc}' `;
+                    }
+                    else {
+                        script = `
+                        select ceil((ceil(sum(rows_total)) / ${page_limit})) as page_total, sum(rows_total) as rows_total  
+                        from (select 1 as rows_total from tbl_action_logs 
+                        where tbl_action_logs.rm_dt IS NULL `;
+                    }
+
+
+
+                    script += `) xtbl_master `
+
+
+                    let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+                    if (!tbl_temporary0.code) {
+                        if (tbl_temporary0.data.length > 0) {
+                            page_total = parseInt(tbl_temporary0.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary0.data[0].rows_total);
+                        }
+                    }
+
+
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: tbl_temporary.data,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                        page_total: (page_total <= 0 ? 1 : page_total),
+                        rows_total: rows_total
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                } else {
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: xresult,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                }
+            } else {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: xresult,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: xresult,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+    });
+}
+
+
 exports.getOrderReport = async (req, res, next) => {
 
     var xresult = [];
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { order_no, req_dt, ptrl_tank_code, itm_code, off_code,
+        let { order_no, req_dt, ptrl_tank_code, itm_code,
             search, page_index, page_limit, action } = req.body[0];
         page_index == undefined ? page_index = 1 : page_index;
         page_limit == undefined ? page_limit = 10 : page_limit;
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (req_dt == undefined || order_no == undefined || off_code == undefined || action == undefined) {
+        if (req_dt == undefined || order_no == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -373,10 +578,6 @@ exports.getOrderReport = async (req, res, next) => {
                         where tbl_order_petrol.rm_dt IS NULL `;
                     }
 
-                    if (off_code != undefined && off_code.toString().toUpperCase() != 'ALL') {
-                        script += ` and tbl_order_petrol.division = '${off_code}' `
-                    }
-
 
 
 
@@ -471,14 +672,13 @@ exports.addOrderInformation = async (req, res, next) => {
             sh_cus_ref,
             sh_cus_date_ref,
             order_petrol,
-            off_code,
             action
         } = req.body[0];
 
         // เช็คเฉพาะส่วนที่สำคัญ
         if (order_type == undefined || order_group == undefined
             || division == undefined || sold_to == undefined || ship_to == undefined
-            || deli_date_req == undefined || order_petrol == undefined || action == undefined) {
+            || deli_date_req == undefined || order_petrol == undefined || action == undefined || description == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -499,14 +699,14 @@ exports.addOrderInformation = async (req, res, next) => {
             (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
             cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
             deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
-            status_deli, ist_dt, order_flag) 
+            status_deli, ist_dt, order_flag, auto_order) 
             VALUES 
             ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             '${po_name || ''}', '${order_by || ''}', '${ship_cond || ''}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
             '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1')`;
+            '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
 
         script = script.replace(/'NULL'/gi, "NULL");
         let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
@@ -520,7 +720,9 @@ exports.addOrderInformation = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูล Order', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล Order', action[0].value);
+            let event_type = req.body[0].event_type || 'manual';
+            let logPayload = { ...req.body[0], order_no: order_no };
+            await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถบันทึกข้อมูล Order', action[0].value);
             return;
         }
 
@@ -553,9 +755,9 @@ exports.addOrderInformation = async (req, res, next) => {
                             for (var k = 0; k <= order_petrol[i].data[j].item_text.length - 1; k++) {
                                 var item_text = order_petrol[i].data[j].item_text[k];
                                 let script_item = `INSERT INTO public.tbl_order_item 
-                                    (order_no, item_no, item_qty, long_text_id,long_text,ist_dt,order_item_flag) 
+                                    (order_no, item_no, item_qty, long_text_id,long_text,ist_dt,order_item_flag, auto_order) 
                                     VALUES ('${order_no}', '${itm_code}', ${item_quantity},'${item_text.long_text_id}','${item_text.long_text}',
-                                    '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1')`;
+                                    '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
                                 await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
                             }
                         }
@@ -575,7 +777,9 @@ exports.addOrderInformation = async (req, res, next) => {
         }]
 
         res.status(200).send(response);
-        await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูล Order', JSON.stringify(req.body[0]), 'success', action[0].value);
+        let event_type = req.body[0].event_type || 'manual';
+        let logPayload = { ...req.body[0], order_no: order_no };
+        await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'success', action[0].value);
         return;
 
     })().catch(async (err) => {
@@ -621,7 +825,7 @@ exports.setOrderInformation = async (req, res, next) => {
         } = req.body[0];
 
         // เช็คเฉพาะส่วนที่สำคัญ
-        if (action == undefined) {
+        if (description == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -633,6 +837,11 @@ exports.setOrderInformation = async (req, res, next) => {
             res.status(200).send(response);
             return;
         }
+
+        let logPayload = {
+            body: req.body[0],
+            order_no: order_no
+        };
 
         // Step 1: UPDATE tbl_order — แก้ไขทุกฟิลด์ยกเว้น order_no
         let setClauses = [];
@@ -668,7 +877,9 @@ exports.setOrderInformation = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูล Order', JSON.stringify(req.body[0]), 'ไม่สามารถแก้ไขข้อมูล Order', action[0].value);
+            let event_type = req.body[0].event_type || 'override';
+            let logPayloadObj = { ...req.body[0], order_no: order_no };
+            await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayloadObj), 'ไม่สามารถแก้ไขข้อมูล Order', action[0].value);
             return;
         }
 
@@ -683,6 +894,7 @@ exports.setOrderInformation = async (req, res, next) => {
                         var item_quantity = parseFloat(order_petrol[i].data[j].item_quantity) || 0;
                         var ord_petrol_code = order_petrol[i].data[j].ord_petrol_code || order_petrol[i].ord_petrol_code;
                         var item_id = order_petrol[i].data[j].id;
+                        var order_item_no = order_petrol[i].data[j].item_no;
                         // UPDATE tbl_order_petrol — แก้ไขจำนวนน้ำมัน
                         if (ord_petrol_code) {
                             let script_petrol = `UPDATE public.tbl_order_petrol 
@@ -693,15 +905,39 @@ exports.setOrderInformation = async (req, res, next) => {
                             await pgConn.execute(dbPrefix + lic_code, script_petrol, config.connectionString());
                         }
 
-                        // UPDATE tbl_order_item — แก้ไขจำนวนน้ำมัน
-                        if (item_id) {
-                            let script_item = `UPDATE public.tbl_order_item 
-                                SET item_qty = ${item_quantity}, 
-                                mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-                                WHERE id = '${order_petrol[i].data[j].id}'`;
-                            console.log(script_item)
+                        // INSERT tbl_order_item แทนการ อัปเดต ตาม Requirement
+                        if (order_item_no) {
+                            // ดึงข้อมูลเดิมมาเพื่อ insert ทับ
+                            let getItemScript = `SELECT * FROM public.tbl_order_item WHERE order_no = '${order_no}' and item_no = '${order_item_no}'`;
+                            let oldItemResult = await pgConn.get(dbPrefix + lic_code, getItemScript, config.connectionString());
 
-                            await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                            if (!oldItemResult.code && oldItemResult.data.length > 0) {
+                                let oldItem = oldItemResult.data[0];
+
+                                if (oldItem.auto_order == '1') {
+                                    let script_item = `INSERT INTO public.tbl_order_item 
+                                        (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
+                                        VALUES (
+                                        '${oldItem.order_no}', 
+                                        '${oldItem.item_no}', 
+                                        ${item_quantity}, 
+                                        '${oldItem.long_text_id || ''}', 
+                                        '${oldItem.long_text || ''}', 
+                                        '${moment().format('YYYY-MM-DD HH:mm:ss')}', 
+                                        '${oldItem.order_item_flag || '1'}', 
+                                        '0'
+                                        )`;
+                                    console.log(script_item);
+                                    await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+
+                                    // Disable/Remove the old one by setting order_item_flag to 0 or nullifying it
+                                    let disableOldScript = `UPDATE public.tbl_order_item SET order_item_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE order_no = '${order_no}' and item_no = '${order_item_no}'`;
+                                    await pgConn.execute(dbPrefix + lic_code, disableOldScript, config.connectionString());
+                                } else {
+                                    let script_item = `UPDATE public.tbl_order_item SET item_qty = ${item_quantity}, mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE order_no = '${order_no}' and item_no = '${order_item_no}'`;
+                                    await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                                }
+                            }
                         }
                     }
                 }
@@ -713,14 +949,14 @@ exports.setOrderInformation = async (req, res, next) => {
             status: 'success',
             invalid_code: '0',
             message: '',
-            data: [{
-                order_no: order_no
-            }],
+            data: [],
             response_time: moment().format('YYYY-MM-DD HH:mm:ss')
         }]
 
         res.status(200).send(response);
-        await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูล Order', JSON.stringify(req.body[0]), 'success', action[0].value);
+        let event_type = req.body[0].event_type || 'override';
+        let logPayloadObj = { ...req.body[0], order_no: order_no };
+        await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayloadObj), 'success', action[0].value);
         return;
 
     })().catch(async (err) => {
@@ -775,7 +1011,8 @@ exports.removeOrderInformationById = async (req, res, next) => {
                 }]
 
                 res.status(200).send(response);
-                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body[0]), 'success', action[0].value);
+                let event_type = req.body[0].event_type || 'Cancel';
+                await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(req.body[0]), 'success', action[0].value);
                 return;
             } else {
                 let response = [{
@@ -786,7 +1023,8 @@ exports.removeOrderInformationById = async (req, res, next) => {
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
                 res.status(200).send(response);
-                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                let event_type = req.body[0].event_type || 'Cancel';
+                await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
                 return;
             }
         }
@@ -801,7 +1039,8 @@ exports.removeOrderInformationById = async (req, res, next) => {
             response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
         }]
         res.status(200).send(response);
-        await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปั้มที่พ่วงงานกันได้', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        let event_type = req.body[0].event_type || 'cancel';
+        await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
         return;
     });
 
