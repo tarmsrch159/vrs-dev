@@ -1,11 +1,7 @@
 const {
     Pool
 } = require('pg')
-var pool;
-exports.link = async (connectionstring) => {
-    let temporary = JSON.parse(JSON.stringify(connectionstring));
-    pool = new Pool(temporary)
-}
+
 
 exports.execute2params = async (script, params = []) => {
 
