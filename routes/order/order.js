@@ -2,6 +2,7 @@ const config = require('../../configuration/connection');
 const pgConn = require('../../library/pgConnection');
 // const moment = require('moment/ts3.1-typings/moment');
 const moment = require('moment');
+const axios = require('axios');
 
 const xglobal = require('../../middleware/global');
 
@@ -1353,3 +1354,255 @@ exports.setStatusDeli = async (req, res, next) => {
 };
 
 
+
+exports.getOrderRunout = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { action } = req.body[0];
+
+        if (action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+            res.status(200).send(response);
+            return;
+        }
+
+        // เช็ค order ที่ auto_order = '1' และ order_no ยังว่าง/null
+        // และ ist_dt เกินเวลากำหนด (RUNOUT_TIMEOUT_MINUTES นาที)
+        let script = `SELECT id, order_no, order_type, order_group, sold_to, ship_to, 
+            deli_date_req, description, auto_order, ist_dt,
+            EXTRACT(EPOCH FROM (NOW() - ist_dt)) / 60 AS minutes_since_created
+            FROM public.tbl_order 
+            WHERE auto_order = '1' 
+            AND (order_no IS NULL OR order_no = '') 
+            AND rm_dt IS NULL 
+            AND ist_dt <= NOW() - INTERVAL '${RUNOUT_TIMEOUT_MINUTES} minutes'
+            ORDER BY ist_dt ASC`;
+
+        let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+        if (!tbl_temporary.code) {
+            if (tbl_temporary.data.length > 0) {
+                // เพิ่ม status runout ให้แต่ละ order
+                let runout_orders = tbl_temporary.data.map(order => ({
+                    ...order,
+                    runout_status: 'Run-out',
+                    runout_reason: `ไม่ได้รับ order_no กลับมาภายใน ${RUNOUT_TIMEOUT_MINUTES} นาที`
+                }));
+
+                tbl_temporary.data = JSON.parse(JSON.stringify(runout_orders).replace(/\:null/gi, "\:\"\""));
+
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: '',
+                    data: tbl_temporary.data,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ตรวจสอบ Order Runout', JSON.stringify(req.body[0]), 'success', action[0].value);
+                return;
+            } else {
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: 'ไม่พบ Order ที่ Runout',
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+
+                res.status(200).send(response);
+                return;
+            }
+        } else {
+            let response = [{
+                status: 'error',
+                invalid_code: '-3',
+                message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+            res.status(200).send(response);
+            await xglobal.action_logs(lic_code, action[0].id, 'ตรวจสอบ Order Runout', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            return;
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+    });
+
+}
+
+exports.getConfirmOrder = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { order_no, action } = req.body[0];
+
+        if (!order_no || !action) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            return;
+        }
+
+        // ================ ดึงข้อมูล tbl_order ==================
+        let orderScript = `SELECT * FROM tbl_order WHERE order_no = '${order_no}' AND rm_dt IS NULL LIMIT 1`;
+        let orderResult = await pgConn.get(dbPrefix + lic_code, orderScript, config.connectionString());
+
+        if (orderResult.code || orderResult.data.length === 0) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่พบข้อมูลออเดอร์ในระบบ',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            return;
+        }
+
+        let orderData = orderResult.data[0];
+
+        // ================ ดึงข้อมูล tbl_order_item ==================
+        let itemScript = `
+            SELECT i.item_no, i.item_qty, i.long_text_id, i.long_text, t.itm_material_number 
+            FROM tbl_order_item i
+            LEFT JOIN tbl_item t ON i.item_no = t.itm_code
+            WHERE i.order_no = '${order_no}' AND i.rm_dt IS NULL AND i.order_item_flag = '1'
+            ORDER BY i.id ASC
+        `;
+        let itemResult = await pgConn.get(dbPrefix + lic_code, itemScript, config.connectionString());
+
+        // ================ Construct SAP Payload ==================
+        let sapItems = [];
+        if (!itemResult.code && itemResult.data.length > 0) {
+            sapItems = itemResult.data.map((item, index) => {
+                let salesOrderItem = String((index + 1) * 10); // 10, 20, 30...
+
+                let qty = parseFloat(item.item_qty || 0).toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+                let sapItemObj = {
+                    "SalesOrderItem": salesOrderItem,
+                    "Material": item.itm_material_number || "",
+                    "OrderQuantity": qty,
+                    "DeliveryPlant": "2I01", // Hardcoded per example
+                    "ItemText": []
+                };
+
+                if (item.long_text_id && item.long_text) {
+                    sapItemObj.ItemText.push({
+                        "LongTextID": item.long_text_id,
+                        "LongText": item.long_text
+                    });
+                }
+
+                return sapItemObj;
+            });
+        }
+
+        let cus_date_ref_formatted = orderData.cus_date_ref ? moment(orderData.cus_date_ref).format('YYYYMMDD') : "";
+        let deli_date_req_formatted = orderData.deli_date_req ? moment(orderData.deli_date_req).format('YYYYMMDD') : "";
+        let sh_cus_date_ref_formatted = orderData.sh_cus_date_ref ? moment(orderData.sh_cus_date_ref).format('YYYYMMDD') : "";
+
+        let payloadData = JSON.stringify({
+            "SalesDocuments": [
+                {
+                    "SalesOrderType": orderData.order_type || "",
+                    "SalesOrganization": "1900",
+                    "DistributionChannel": orderData.chanel || "01",
+                    "OrganizationDivision": orderData.division || "04",
+                    "ShipToParty": orderData.ship_to || "",
+                    "CustomerReference": orderData.cus_ref || "",
+                    "CustomerPurchaseOrderType": orderData.po_name || "AOS",
+                    "CustomerReferenceDate": cus_date_ref_formatted,
+                    "NameofOrderer": orderData.order_by || "DTC",
+                    "ShippingCondition": orderData.ship_cond || "T1",
+                    "CustomerPaymentTerms": orderData.pay_term || "Z006",
+                    "RequestedDeliveryDate": deli_date_req_formatted,
+                    "DeliveryTime": orderData.deli_time_req || "Z05",
+                    "Description": orderData.description || "",
+                    "SHCustomerReference": orderData.sh_cus_ref || "",
+                    "SHCustomerReferenceDate": sh_cus_date_ref_formatted,
+                    "HeaderText": [],
+                    "Items": sapItems
+                }
+            ]
+        });
+
+        // ================ API Config ==================
+        let axiosConfig = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI001/SOCreation',
+            headers: {
+                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                'Content-Type': 'application/json'
+            },
+            data: payloadData
+        };
+
+        try {
+            let apiResponse = await axios.request(axiosConfig);
+
+            let response = [{
+                status: 'success',
+                invalid_code: '0',
+                message: 'Confirm Order API Called Successfully',
+                data: apiResponse.data,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api', JSON.stringify({ order_no, payload: JSON.parse(payloadData) }), 'success', action[0].value);
+            return;
+
+        } catch (error) {
+            console.log(error);
+            let errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+            let response = [{
+                status: 'error',
+                invalid_code: '-2',
+                message: 'External API Error: ' + errMsg,
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_no }), errMsg, action[0].value);
+            return;
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ',
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }];
+        res.status(200).send(response);
+    });
+
+};
