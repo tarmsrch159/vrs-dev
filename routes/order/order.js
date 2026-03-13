@@ -297,7 +297,7 @@ exports.getLoggingOrderInformation = async (req, res, next) => {
             if (action_desc && action_desc.toString().toUpperCase() != 'ALL') {
                 script += ` and tbl_action_logs.action_desc = '${action_desc}' `;
             } else {
-                script += ` and tbl_action_logs.action_desc = 'override' or tbl_action_logs.action_desc = 'manual' or tbl_action_logs.action_desc = 'cancel' `;
+                script += ` and (tbl_action_logs.action_desc = 'override' or tbl_action_logs.action_desc = 'manual' or tbl_action_logs.action_desc = 'cancel' or tbl_action_logs.action_desc = 'confirm') `;
             }
 
             script += ` order by tbl_action_logs.ist_dt desc `
@@ -694,7 +694,44 @@ exports.addOrderInformation = async (req, res, next) => {
         let script = ``;
         let order_no = 'ord-' + moment().format('x');
 
-        // Step 1: Insert tbl_order
+        // ====================== เช็คก่อนว่า มีรหัสน้ำมันในระบบรึเปล่า ======================
+        let hasValidItem = false;
+        if (order_petrol && Array.isArray(order_petrol) && order_petrol.length > 0) {
+            for (var i = 0; i <= order_petrol.length - 1; i++) {
+                if (order_petrol[i].data && Array.isArray(order_petrol[i].data) && order_petrol[i].data.length > 0) {
+                    for (var j = 0; j <= order_petrol[i].data.length - 1; j++) {
+                        var pre_itm_material_number = order_petrol[i].data[j].itm_material_number;
+                        if (pre_itm_material_number) {
+                            let check_item_script = `SELECT 1 FROM tbl_item WHERE itm_material_number = '${pre_itm_material_number}' LIMIT 1`;
+                            let checkItemResult = await pgConn.get(dbPrefix + lic_code, check_item_script, config.connectionString());
+                            if (!checkItemResult.code && checkItemResult.data.length > 0) {
+                                hasValidItem = true;
+                                break; // เจอ แล้ว break loop
+                            }
+                        }
+                    }
+                }
+                if (hasValidItem) break; // เจอแล้ว break loop
+            }
+        }
+
+        if (!hasValidItem) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถบันทึกข้อมูล Order ได้ เนื่องจากไม่พบรหัสสินค้าน้ำมัน (material_code) ที่ถูกต้องในระบบเลยแม้แต่รายการเดียว',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            let event_type = req.body[0].event_type || 'manual';
+            let logPayload = { ...req.body[0] }; // order_no is not created
+            await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถบันทึกข้อมูล Order เนื่องจากไม่มี item ที่สมบูรณ์', action[0].value);
+            return;
+        }
+        // ====================== จบการเช็ค ======================
+
+        // ====================== เพิ่มข้อมูลลงใน tbl_order ======================
         script = `INSERT INTO public.tbl_order 
             (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
             cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
@@ -703,7 +740,7 @@ exports.addOrderInformation = async (req, res, next) => {
             VALUES 
             ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            '${po_name || ''}', '${order_by || ''}', '${ship_cond || ''}', '${pay_term || ''}', 
+            '${po_name || 'AOS'}', '${order_by || ''}', '${ship_cond || ''}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
             '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
@@ -725,8 +762,9 @@ exports.addOrderInformation = async (req, res, next) => {
             await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถบันทึกข้อมูล Order', action[0].value);
             return;
         }
+        let invalid_material_item = []
 
-        // Step 2: Insert tbl_order_petrol + tbl_order_item จาก order_petrol array
+        // ====================== เพิ่มข้อมูลลงใน tbl_order_petrol + tbl_order_item จาก order_petrol array ======================
         if (order_petrol && Array.isArray(order_petrol) && order_petrol.length > 0) {
             for (var i = 0; i <= order_petrol.length - 1; i++) {
                 var ptrl_code = order_petrol[i].ptrl_code;
@@ -737,10 +775,18 @@ exports.addOrderInformation = async (req, res, next) => {
                         var itm_code = order_petrol[i].data[j].itm_code;
                         var itm_unit_code = order_petrol[i].data[j].itm_unit_code || '';
                         var item_quantity = parseFloat(order_petrol[i].data[j].item_quantity) || 0;
+                        var itm_material_number = order_petrol[i].data[j].itm_material_number;
                         var ord_petrol_code = 'optrl-' + moment().format('x') + '-' + i + '-' + j;
 
-                        // Insert tbl_order_petrol
-                        let script_petrol = `INSERT INTO public.tbl_order_petrol 
+                        // ===== เช็ค itm_material_number ว่ามีอยู่ใน tbl_item หรือไม่ =====
+                        if (itm_material_number) {
+                            let check_item = `SELECT * FROM tbl_item WHERE itm_material_number = '${itm_material_number}'`
+                            let checkItem = await pgConn.get(dbPrefix + lic_code, check_item, config.connectionString());
+
+                            if (!checkItem.code && checkItem.data.length > 0) {
+                                itm_code = checkItem.data[0].itm_code;
+                                // ===== เพิ่มข้อมูลลงใน tbl_order_petrol =====
+                                let script_petrol = `INSERT INTO public.tbl_order_petrol 
                             (ord_petrol_code, ord_code, ptrl_code, ptrl_tank_code, itm_code, itm_unit_code, item_quantity, 
                             req_dt, ord_petrol_flag, ist_dt) 
                             VALUES ('${ord_petrol_code}', '${order_no}', '${ptrl_code}', '${ptrl_tank_code}', 
@@ -748,31 +794,49 @@ exports.addOrderInformation = async (req, res, next) => {
                             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
                             '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}')`;
 
-                        await pgConn.execute(dbPrefix + lic_code, script_petrol, config.connectionString());
+                                await pgConn.execute(dbPrefix + lic_code, script_petrol, config.connectionString());
 
-                        // Insert tbl_order_item
-                        if (order_petrol[i].data[j].item_text && Array.isArray(order_petrol[i].data[j].item_text) && order_petrol[i].data[j].item_text.length > 0) {
-                            for (var k = 0; k <= order_petrol[i].data[j].item_text.length - 1; k++) {
-                                var item_text = order_petrol[i].data[j].item_text[k];
-                                let script_item = `INSERT INTO public.tbl_order_item 
-                                    (order_no, item_no, item_qty, long_text_id,long_text,ist_dt,order_item_flag, auto_order) 
-                                    VALUES ('${order_no}', '${itm_code}', ${item_quantity},'${item_text.long_text_id}','${item_text.long_text}',
+                                // ===== เพิ่มข้อมูลลงใน tbl_order_item =====
+                                if (order_petrol[i].data[j].item_text && Array.isArray(order_petrol[i].data[j].item_text) && order_petrol[i].data[j].item_text.length > 0) {
+                                    // ===== เพิ่มข้อมูลลงใน tbl_order_item กรณีที่มี item_text ส่งมาด้วย (วนลูป Insert ตามปกติ) =====
+                                    for (var k = 0; k <= order_petrol[i].data[j].item_text.length - 1; k++) {
+                                        var item_text = order_petrol[i].data[j].item_text[k];
+                                        let script_item = `INSERT INTO public.tbl_order_item 
+                                        (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
+                                        VALUES ('${order_no}', '${itm_code}', ${item_quantity}, '${item_text.long_text_id}', '${item_text.long_text}',
+                                        '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
+                                        await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                                    }
+                                } else {
+                                    // ===== เพิ่มข้อมูลลงใน tbl_order_item =====
+                                    let script_item = `INSERT INTO public.tbl_order_item 
+                                    (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
+                                    VALUES ('${order_no}', '${itm_code}', ${item_quantity}, '', '',
                                     '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
-                                await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                                    await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                                }
+                            } else {
+                                // ===== ข้ามรายการน้ำมันที่ไม่มีอยู่ในระบบ ======
+                                console.log(`ข้ามรายการน้ำมัน: material number ${itm_material_number} ไม่พบในระบบ`);
+                                invalid_material_item.push(itm_material_number)
+                                continue;
                             }
                         }
+
+
 
                     }
                 }
             }
         }
 
-        // Success response
+        // ============ Success response ============
         let response = [{
             status: 'success',
             invalid_code: '0',
             message: '',
             data: [],
+            invalid_material_item: invalid_material_item,
             response_time: moment().format('YYYY-MM-DD HH:mm:ss')
         }]
 
@@ -924,14 +988,14 @@ exports.setOrderInformation = async (req, res, next) => {
                                         '${oldItem.long_text_id || ''}', 
                                         '${oldItem.long_text || ''}', 
                                         '${moment().format('YYYY-MM-DD HH:mm:ss')}', 
-                                        '${oldItem.order_item_flag || '1'}', 
+                                        '1',    
                                         '0'
                                         )`;
                                     console.log(script_item);
                                     await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
 
                                     // Disable/Remove the old one by setting order_item_flag to 0 or nullifying it
-                                    let disableOldScript = `UPDATE public.tbl_order_item SET order_item_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE order_no = '${order_no}' and item_no = '${order_item_no}'`;
+                                    let disableOldScript = `UPDATE public.tbl_order_item SET order_item_flag = '1', WHERE order_no = '${order_no}' and item_no = '${order_item_no}'`;
                                     await pgConn.execute(dbPrefix + lic_code, disableOldScript, config.connectionString());
                                 } else {
                                     let script_item = `UPDATE public.tbl_order_item SET item_qty = ${item_quantity}, mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE order_no = '${order_no}' and item_no = '${order_item_no}'`;
