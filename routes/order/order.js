@@ -1529,7 +1529,7 @@ exports.getConfirmOrder = async (req, res, next) => {
             "SalesDocuments": [
                 {
                     "SalesOrderType": orderData.order_type || "",
-                    "SalesOrganization": "1900",
+                    "SalesOrganization": orderData.order_group || "1900",
                     "DistributionChannel": orderData.chanel || "01",
                     "OrganizationDivision": orderData.division || "04",
                     "ShipToParty": orderData.ship_to || "",
