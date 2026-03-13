@@ -1243,5 +1243,91 @@ exports.getOrderRunout = async (req, res, next) => {
 }
 
 
+exports.setStatusDeli = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { order_no } = req.query;
+        let {
+            status_deli,
+            action
+        } = req.body[0];
+
+        // เช็คเฉพาะส่วนที่สำคัญ
+        if (status_deli == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+
+            res.status(200).send(response);
+            return;
+        }
+
+        let scriptCheckOrderNo = `SELECT * FROM tbl_order WHERE order_no = '${order_no}'`;
+        let checkOrderNo = await pgConn.get(dbPrefix + lic_code, scriptCheckOrderNo, config.connectionString());
+        if (checkOrderNo.code || checkOrderNo.data.length == 0) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่พบข้อมูลออเดอร์ในระบบ',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+
+            res.status(200).send(response);
+            return;
+        }
+
+        let updateOrderScript = `UPDATE tbl_order SET status_deli = $1, mdf_dt = $2 WHERE order_no = $3`;
+        let tbl_temporary_update_order = await pgConn.execute2params(updateOrderScript, [
+            status_deli,
+            moment().format('YYYY-MM-DD HH:mm:ss'),
+            order_no
+        ]);
+
+        if (tbl_temporary_update_order.code) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถอัปเดตสถานะ Order ได้',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+
+            res.status(200).send(response);
+            return;
+        }
+
+        // ============= Success response =============
+        let response = [{
+            status: 'success',
+            invalid_code: '0',
+            message: '',
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        }];
+
+        res.status(200).send(response);
+        let event_type = req.body[0].event_type || 'update_status';
+        let logPayloadObj = { ...req.body[0], order_no: order_no };
+        await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayloadObj), 'success', action[0].value);
+        return;
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }];
+        res.status(200).send(response);
+    });
+};
 
 
