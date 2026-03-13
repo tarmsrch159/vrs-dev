@@ -1115,20 +1115,67 @@ exports.removeOrderInformationById = async (req, res, next) => {
             res.status(200).send(response);
             return;
         } else {
-            let script = ``;
             // ดัก petrol_merge_job_id เป็น array
             let order_noArr = Array.isArray(order_no) ? order_no : [order_no];
             let order_noIn = order_noArr.map(c => `'${c}'`).join(', ');
-            script = `update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-            where order_no in (${order_noIn});`
+
+            // ================= เช็ค Validate Status Deli =================
+            let scriptCheckStatus = `SELECT order_no, status_deli FROM tbl_order WHERE order_no IN (${order_noIn})`;
+            let status_deli_res = await pgConn.get(dbPrefix + lic_code, scriptCheckStatus, config.connectionString());
+
+            if (status_deli_res.code || status_deli_res.data.length === 0) {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-1',
+                    message: 'ไม่พบข้อมูลออเดอร์ที่สามารถลบได้ในระบบ',
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
+                res.status(200).send(response);
+                return;
+            }
+
+            let validOrders = [];
+            let skippedOrders = [];
+
+            status_deli_res.data.forEach(order => {
+                if (order.status_deli === 'A') {
+                    validOrders.push(order.order_no);
+                } else {
+                    skippedOrders.push(order.order_no);
+                }
+            });
+
+            // ถ้าไม่มีออเดอร์สถานะ A เลยสักตัวเดียว ให้ตีกลับ Error
+            if (validOrders.length === 0) {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-1',
+                    message: 'ไม่สามารถยกเลิก/ลบออเดอร์ได้ เนื่องจากไม่มีออเดอร์ใดที่มี Status Delivery เป็น A',
+                    data: [],
+                    skipped_orders: skippedOrders, // แนบไปบอกหน้าบ้านว่าตัวไหนโดนข้ามบ้าง
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
+                res.status(200).send(response);
+                return;
+            }
+            // ================= จบการเช็ค Status Deli =================
+            let validOrderNoIn = validOrders.map(c => `'${c}'`).join(', ');
+
+            let script = `update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+            where order_no in (${validOrderNoIn});`
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
+
+                let successMessage = skippedOrders.length > 0
+                    ? `ลบข้อมูล Order สำเร็จ ${validOrders.length} รายการ (ข้าม Order ที่สถานะไม่ใช่ A จำนวน ${skippedOrders.length} รายการ)`
+                    : 'ลบข้อมูล Order ได้สำเร็จทั้งหมด';
                 //debugger
                 let response = [{
                     status: 'success',
                     invalid_code: '0',
-                    message: 'ลบข้อมูล Order ได้สำเร็จ',
+                    message: successMessage,
                     data: [],
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
@@ -1192,12 +1239,12 @@ exports.getOrderRunout = async (req, res, next) => {
 
         // เช็ค order ที่ auto_order = '1' และ order_no ยังว่าง/null
         // และ ist_dt เกินเวลากำหนด (RUNOUT_TIMEOUT_MINUTES นาที)
-        let script = `SELECT id, order_no, order_type, order_group, sold_to, ship_to, 
-            deli_date_req, description, auto_order, ist_dt,
-            EXTRACT(EPOCH FROM (NOW() - ist_dt)) / 60 AS minutes_since_created
+        let script = `SELECT id, order_no, order_type, order_group, sold_to, ship_to,
+                deli_date_req, description, auto_order, ist_dt,
+                EXTRACT(EPOCH FROM(NOW() - ist_dt)) / 60 AS minutes_since_created
             FROM public.tbl_order 
-            WHERE auto_order = '1' 
-            AND (order_no IS NULL OR order_no = '') 
+            WHERE auto_order = '1'
+            AND(order_no IS NULL OR order_no = '') 
             AND rm_dt IS NULL 
             AND ist_dt <= NOW() - INTERVAL '${RUNOUT_TIMEOUT_MINUTES} minutes'
             ORDER BY ist_dt ASC`;
@@ -1375,12 +1422,12 @@ exports.getOrderRunout = async (req, res, next) => {
 
         // เช็ค order ที่ auto_order = '1' และ order_no ยังว่าง/null
         // และ ist_dt เกินเวลากำหนด (RUNOUT_TIMEOUT_MINUTES นาที)
-        let script = `SELECT id, order_no, order_type, order_group, sold_to, ship_to, 
-            deli_date_req, description, auto_order, ist_dt,
-            EXTRACT(EPOCH FROM (NOW() - ist_dt)) / 60 AS minutes_since_created
+        let script = `SELECT id, order_no, order_type, order_group, sold_to, ship_to,
+                deli_date_req, description, auto_order, ist_dt,
+                EXTRACT(EPOCH FROM(NOW() - ist_dt)) / 60 AS minutes_since_created
             FROM public.tbl_order 
-            WHERE auto_order = '1' 
-            AND (order_no IS NULL OR order_no = '') 
+            WHERE auto_order = '1'
+            AND(order_no IS NULL OR order_no = '') 
             AND rm_dt IS NULL 
             AND ist_dt <= NOW() - INTERVAL '${RUNOUT_TIMEOUT_MINUTES} minutes'
             ORDER BY ist_dt ASC`;
@@ -1491,7 +1538,7 @@ exports.getConfirmOrder = async (req, res, next) => {
             LEFT JOIN tbl_item t ON i.item_no = t.itm_code
             WHERE i.order_no = '${order_no}' AND i.rm_dt IS NULL AND i.order_item_flag = '1'
             ORDER BY i.id ASC
-        `;
+                `;
         let itemResult = await pgConn.get(dbPrefix + lic_code, itemScript, config.connectionString());
 
         // ================ Construct SAP Payload ==================
