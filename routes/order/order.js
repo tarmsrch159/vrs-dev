@@ -683,8 +683,8 @@ exports.addOrderInformation = async (req, res, next) => {
 
         // เช็คเฉพาะส่วนที่สำคัญ
         if (order_type == undefined || order_group == undefined
-            || division == undefined || sold_to == undefined || ship_to == undefined
-            || deli_date_req == undefined || order_item == undefined || action == undefined || description == undefined) {
+            || sold_to == undefined || ship_to == undefined
+            || deli_date_req == undefined || order_item == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -696,6 +696,9 @@ exports.addOrderInformation = async (req, res, next) => {
             res.status(200).send(response);
             return;
         }
+
+        chanel = chanel = undefined ? "01" : chanel;
+        division = division = undefined ? "04" : division;
 
         let script = ``;
         let order_no = 'ord-' + moment().format('x');
@@ -744,7 +747,7 @@ exports.addOrderInformation = async (req, res, next) => {
             }];
             res.status(200).send(response);
             let event_type = req.body[0].event_type || 'manual';
-            let logPayload = { ...req.body[0] }; // order_no is not created
+            let logPayload = { ...req.body[0] };
             await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถบันทึกข้อมูล Order เนื่องจากไม่มี item ที่สมบูรณ์', action[0].value);
             return;
         }
@@ -757,7 +760,7 @@ exports.addOrderInformation = async (req, res, next) => {
             deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
             status_deli, ist_dt, order_flag, auto_order) 
             VALUES 
-            ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division}', 
+            ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             'AOS', '${order_by || ''}', '${ship_cond || ''}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
