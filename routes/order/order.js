@@ -699,6 +699,7 @@ exports.addOrderInformation = async (req, res, next) => {
 
         chanel = chanel = undefined ? "01" : chanel;
         division = division = undefined ? "04" : division;
+        let cust_date_delidate = deli_date_req = undefined ? "" : deli_date_req;
 
         let script = ``;
         let order_no = 'ord-' + moment().format('x');
@@ -753,6 +754,24 @@ exports.addOrderInformation = async (req, res, next) => {
         }
         // ====================== จบการเช็ค ======================
 
+        cus_date_ref = deli_date_req;
+        sh_cus_date_ref = deli_date_req;
+
+        let req_date_str = moment(deli_date_req).format('YYYYMMDD');
+
+        let scriptCheckShCusRef = `
+            SELECT MAX(CAST(SUBSTRING(sh_cus_ref FROM 12) AS INTEGER)) as last_running 
+            FROM public.tbl_order 
+            WHERE sh_cus_ref LIKE 'AOS%' AND sh_cus_ref ~ '^AOS[0-9]{8}[0-9]+$'
+        `;
+        let checkShCusRefResult = await pgConn.get(dbPrefix + lic_code, scriptCheckShCusRef, config.connectionString());
+
+        let running_number = 1;
+        if (!checkShCusRefResult.code && checkShCusRefResult.data.length > 0 && checkShCusRefResult.data[0].last_running !== null) {
+            running_number = parseInt(checkShCusRefResult.data[0].last_running) + 1;
+        }
+        sh_cus_ref = 'AOS' + req_date_str + String(running_number).padStart(4, '0');
+
         // ====================== เพิ่มข้อมูลลงใน tbl_order ======================
         script = `INSERT INTO public.tbl_order 
             (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
@@ -762,7 +781,7 @@ exports.addOrderInformation = async (req, res, next) => {
             VALUES 
             ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            'AOS', '${order_by || ''}', '${ship_cond || ''}', '${pay_term || ''}', 
+            'AOS', '${order_by || 'DTC'}', '${ship_cond || ''}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
             '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
