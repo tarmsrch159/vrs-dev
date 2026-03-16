@@ -12,9 +12,10 @@ exports.getPetrolInformation = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { ptrl_code, off_code, ptrl_group_code, search, page_index, page_limit, action, auto_order } = req.body[0];
+        let { ptrl_code, off_code, ptrl_group_code, search, page_index, page_limit, action, auto_order, emp_code } = req.body[0];
         page_index == undefined ? page_index = 1 : page_index;
         page_limit == undefined ? page_limit = 10 : page_limit;
+        emp_code = emp_code == undefined ? 'ALL' : emp_code;
         //เช็คเฉพาะส่วนที่สำคัญ
         if (ptrl_code == undefined || off_code == undefined || ptrl_group_code == undefined || lic_code == undefined
             || search == undefined || action == undefined) {
@@ -74,6 +75,10 @@ exports.getPetrolInformation = async (req, res, next) => {
 
             if (off_code.toString().toUpperCase() != 'ALL' && off_code.toString().toUpperCase() != '') {
                 script += ` and tbl_petrol.off_code = '${off_code}'`
+            }
+
+            if (emp_code.toString().toUpperCase() != 'ALL' && emp_code.toString().toUpperCase() != '') {
+                script += ` and tbl_petrol.ptrl_code IN (SELECT ptrl_code FROM tbl_employee WHERE emp_code = '${emp_code}' AND emp_flag = '1') `
             }
 
             if (search != '') {
