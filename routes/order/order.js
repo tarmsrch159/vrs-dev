@@ -9,6 +9,8 @@ const xglobal = require('../../middleware/global');
 const dbPrefix = config.dbPrefix();
 
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
+
+// =========== ดึงข้อมูลรายการสั่งซื้อ ===========
 exports.getOrderInformation = async (req, res, next) => {
 
     var xresult = [];
@@ -60,7 +62,7 @@ exports.getOrderInformation = async (req, res, next) => {
                 tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
                 tbl_petrol.ptrl_desc as station,
                 tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
-                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_order.deli_time_req as RequestTime, 
+                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_master_time.time_value as RequestTime, 
                 tbl_order.description,  tbl_order.sh_cus_date_ref, 
                 tbl_order.status_deli, tbl_order.status_block, tbl_order.status_sd_process, 
                 tbl_order.status_check, tbl_order.sd_doc_reject, tbl_order.cus_group, 
@@ -87,6 +89,7 @@ exports.getOrderInformation = async (req, res, next) => {
                     ORDER BY order_no, item_no, ist_dt DESC
                 ) tbl_order_item on tbl_order.order_no = tbl_order_item.order_no 
                 left join tbl_item on tbl_order_item.item_no = tbl_item.itm_code
+                left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
                 where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' `;
             }
             else {
@@ -97,7 +100,7 @@ exports.getOrderInformation = async (req, res, next) => {
                 tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
                 tbl_petrol.ptrl_desc as station,
                 tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
-                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_order.deli_time_req as RequestTime, 
+                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_master_time.time_value as RequestTime , 
                 tbl_order.description,  tbl_order.sh_cus_date_ref, 
                 tbl_order.status_deli, tbl_order.status_block, tbl_order.status_sd_process, 
                 tbl_order.status_check, tbl_order.sd_doc_reject, tbl_order.cus_group, 
@@ -126,6 +129,7 @@ exports.getOrderInformation = async (req, res, next) => {
                     ORDER BY order_no, item_no, ist_dt DESC
                 ) tbl_order_item on tbl_order.order_no = tbl_order_item.order_no 
                 left join tbl_item on tbl_order_item.item_no = tbl_item.itm_code
+                left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
                 left join (
                     SELECT ptrl_code, itm_code, string_agg(tnk_number, ', ') as tnk_number 
                     FROM tbl_petrol_tank 
@@ -276,7 +280,7 @@ exports.getOrderInformation = async (req, res, next) => {
     });
 }
 
-
+// =========== ดึงข้อมูลรายการสั่งซื้อ Order Log ===========
 exports.getLoggingOrderInformation = async (req, res, next) => {
 
     var xresult = [];
@@ -472,7 +476,7 @@ exports.getLoggingOrderInformation = async (req, res, next) => {
     });
 }
 
-
+// =========== ดึงข้อมูลรายการสั่งซื้อ Order Report ===========
 exports.getOrderReport = async (req, res, next) => {
 
     var xresult = [];
@@ -669,8 +673,7 @@ exports.getOrderReport = async (req, res, next) => {
     });
 }
 
-
-
+// =========== ดึงข้อมูล Order Runout ===========
 exports.getOrderRunout = async (req, res, next) => {
 
     return (async () => {
@@ -764,6 +767,7 @@ exports.getOrderRunout = async (req, res, next) => {
 
 }
 
+// =========== ดึงข้อมูลรายการสั่งซื้อ ที่มีการยืนยันจาก HANA ===========
 exports.getConfirmOrder = async (req, res, next) => {
 
     return (async () => {
@@ -923,9 +927,214 @@ exports.getConfirmOrder = async (req, res, next) => {
 
 };
 
+// =========== ดึงรายการสั่งซื้อจาก Hana ===========
+exports.getOrderInformationHana = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { order_no, creation_date, creation_date_to, action } = req.body[0];
+
+        if (!order_no || !action) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            return;
+        }
+
+        // ================ Construct SAP Payload ==================
+        let sapItems = [];
+
+        let payloadData = JSON.stringify({
+            "SOInputParameter": {
+                "SalesOrderList": [
+                    {
+                        "SalesOrder": order_no
+                    }
+                ],
+                "SalesOrderTypeList": [],
+                "ShipToPartyList": [],
+                "CreationDate": creation_date,
+                "CreationTime": "",
+                "CreationDateTo": creation_date_to,
+                "CreationTimeTo": "",
+                "CustomerPurchaseOrderType": "",
+                "CustomerGroup1List": [],
+                "NameofOrdererList": []
+            }
+        });
+
+        // ================ API Config ==================
+        let axiosConfig = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI024/SODetail',
+            headers: {
+                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                'Content-Type': 'application/json'
+            },
+            data: payloadData
+        };
+
+        try {
+            let apiResponse = await axios.request(axiosConfig);
+
+            let response = [{
+                status: 'success',
+                invalid_code: '0',
+                message: 'ดึงข้อมูล Order จาก SAP',
+                data: apiResponse.data,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+
+            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order จาก SAP', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
+            return;
+
+        } catch (error) {
+            console.log(error);
+            let errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+            let response = [{
+                status: 'error',
+                invalid_code: '-2',
+                message: 'External API Error: ' + errMsg,
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_no }), errMsg, action[0].value);
+            return;
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ',
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }];
+        res.status(200).send(response);
+    });
+
+};
+
+// =========== ส่งคำขอยกเลิกคำสั่งซื้อ ไปที่ HANA
+exports.cancelOrderInformationHana = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { order_no, items, action } = req.body[0];
+
+        if (!order_no || !action) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            return;
+        }
+
+        // ================ Construct HANA Payload ==================
+        let itemsArr = [];
+        if (items && Array.isArray(items) && items.length > 0) {
+            itemsArr = items;
+        } else {
+            itemsArr = [{}];
+        }
+
+        let sapItems = itemsArr.map((item, index) => {
+            let salesOrderItem = String((index + 1) * 10);
+
+            return {
+                "SalesOrderItem": salesOrderItem,
+                // หากค่า item เดิมที่ถูกส่งมามี key/value อื่นๆ อยู่แล้ว จะถูกดึงมารวมใน Object นี้ด้วย
+                ...(typeof item === 'object' ? item : {})
+            };
+        });
+
+        let payloadData = JSON.stringify({
+            "SalesDocuments": [
+                {
+                    "SalesOrder": order_no,
+                    "Items": sapItems
+                }
+            ]
+
+        });
+
+        console.log(payloadData)
+
+        // ================ API Config ==================
+        let axiosConfig = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI022/SOUpdate',
+            headers: {
+                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                'Content-Type': 'application/json'
+            },
+            data: payloadData
+        };
+
+        try {
+            let apiResponse = await axios.request(axiosConfig);
+
+            let response = [{
+                status: 'success',
+                invalid_code: '0',
+                message: 'ขอยกเลิกคำสั่งซื้อ จาก SAP',
+                data: apiResponse.data,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+
+            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order จาก SAP', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
+            return;
+
+        } catch (error) {
+            console.log(error);
+            let errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+            let response = [{
+                status: 'error',
+                invalid_code: '-2',
+                message: 'External API Error: ' + errMsg,
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_no }), errMsg, action[0].value);
+            return;
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ',
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }];
+        res.status(200).send(response);
+    });
+
+};
+
 // Mockup: กำหนดเวลา runout (นาที)
 const RUNOUT_TIMEOUT_MINUTES = 5;
 
+// =========== ดึงข้อมูลรายการสั่งซื้อ Order Runout ===========
 exports.getOrderRunout = async (req, res, next) => {
 
     return (async () => {
@@ -1019,6 +1228,7 @@ exports.getOrderRunout = async (req, res, next) => {
 
 }
 
+// =========== เพิ่มข้อมูลรายการสั่งซื้อ ===========
 exports.addOrderInformation = async (req, res, next) => {
 
     return (async () => {
@@ -1048,7 +1258,7 @@ exports.addOrderInformation = async (req, res, next) => {
         // เช็คเฉพาะส่วนที่สำคัญ
         if (order_type == undefined || order_group == undefined
             || sold_to == undefined || ship_to == undefined
-            || deli_date_req == undefined || order_item == undefined || action == undefined) {
+            || deli_date_req == undefined || deli_time_req == undefined || order_item == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -1176,6 +1386,7 @@ exports.addOrderInformation = async (req, res, next) => {
                 var itm_code = order_item[i].itm_code;
                 var item_quantity = parseFloat(order_item[i].item_quantity) || 0;
                 var itm_material_number = order_item[i].itm_material_number;
+                var deli_plant = order_item[i].deli_plant;
 
                 // ===== เช็ค itm_material_number ว่ามีอยู่ใน tbl_item หรือไม่ =====
                 if (itm_material_number) {
@@ -1191,9 +1402,9 @@ exports.addOrderInformation = async (req, res, next) => {
                             for (var k = 0; k < order_item[i].item_text.length; k++) {
                                 var item_text = order_item[i].item_text[k];
                                 let script_item = `INSERT INTO public.tbl_order_item 
-                                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
+                                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant) 
                                 VALUES ('${order_no}', '${itm_code}', ${item_quantity}, '${item_text.long_text_id}', '${item_text.long_text}',
-                                '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
+                                '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '${deli_plant || ''}')`;
                                 await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
                             }
                         } else {
@@ -1243,7 +1454,7 @@ exports.addOrderInformation = async (req, res, next) => {
     });
 
 }
-
+// =========== แก้ไขข้อมูลรายการสั่งซื้อ ===========
 exports.setOrderInformation = async (req, res, next) => {
 
     return (async () => {
@@ -1554,10 +1765,7 @@ exports.setStatusDeli = async (req, res, next) => {
     });
 };
 
-
-
-
-//Success
+// =========== ลบข้อมูลรายการสั่งซื้อ ===========
 exports.removeOrderInformationById = async (req, res, next) => {
 
     return (async () => {
