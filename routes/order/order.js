@@ -992,8 +992,68 @@ exports.getOrderInformationHana = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order จาก SAP', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
-            return;
+            // =========== เพิ่มข้อมูลคำสั่งจาก HANA ลง Database =============
+            let sapData = apiResponse.data;
+            if (sapData && sapData.Response && sapData.Response.SalesOrders && Array.isArray(sapData.Response.SalesOrders)) {
+                for (let sapOrder of sapData.Response.SalesOrders) {
+                    let sap_order_no = sapOrder.SalesOrder;
+
+                    // เช็คว่ามี Order นี้ในระบบหรือยัง
+                    let checkOrderScript = `SELECT 1 FROM tbl_order WHERE order_no = '${sap_order_no}' LIMIT 1`;
+                    let checkOrderResult = await pgConn.get(dbPrefix + lic_code, checkOrderScript, config.connectionString());
+
+                    if (!checkOrderResult.code && checkOrderResult.data.length === 0) {
+                        // ถ้ายังไม่มี ให้ Insert
+                        let creation_dt = sapOrder.CreationDate ? moment(sapOrder.CreationDate, 'YYYYMMDD').format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
+                        let creation_tm = sapOrder.CreationTime ? moment(sapOrder.CreationTime, 'HHmmss').format('HH:mm:ss') : moment().format('HH:mm:ss');
+                        let ist_dt = `${creation_dt} ${creation_tm}`;
+
+                        let deli_date_req = sapOrder.RequestedDeliveryDate ? moment(sapOrder.RequestedDeliveryDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
+                        let cus_date_ref = sapOrder.CustomerReferenceDate ? moment(sapOrder.CustomerReferenceDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
+
+                        let insertOrderScript = `INSERT INTO public.tbl_order 
+                        (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
+                        cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
+                        deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
+                        status_deli, ist_dt, order_flag, auto_order) 
+                        VALUES 
+                        ('${sap_order_no}', '${sapOrder.SalesOrderType || ''}', '${sapOrder.SalesOrganization || ''}', '${sapOrder.DistributionChannel || '01'}', '${sapOrder.OrganizationDivision || '04'}', 
+                        '${sapOrder.SoldToParty || ''}', '${sapOrder.ShipToParty || ''}', '${sapOrder.SHCustomerReference || ''}', 
+                        ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'}, 
+                        '${sapOrder.CreatedByUser || ''}', '${sapOrder.NameofOrderer || ''}', '', '', 
+                        ${deli_date_req ? "'" + deli_date_req + "'" : 'NULL'}, '${sapOrder.DeliveryTime || ''}', 
+                        '${sapOrder.Description || ''}', '${sapOrder.SHCustomerReference || ''}', 
+                        ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'}, 
+                        '${sapOrder.OverallDeliveryStatus || '0'}', '${ist_dt}', '1', '1')`;
+
+                        insertOrderScript = insertOrderScript.replace(/'NULL'/gi, "NULL");
+                        await pgConn.execute(dbPrefix + lic_code, insertOrderScript, config.connectionString());
+
+                        // Insert Items
+                        if (sapOrder.Items && Array.isArray(sapOrder.Items)) {
+                            for (let sapItem of sapOrder.Items) {
+                                let material = sapItem.Material;
+                                let itm_code = '';
+
+                                // Lookup itm_code from Material
+                                let lookupMaterialScript = `SELECT itm_code FROM tbl_item WHERE itm_material_number = '${material}' LIMIT 1`;
+                                let lookupResult = await pgConn.get(dbPrefix + lic_code, lookupMaterialScript, config.connectionString());
+                                if (!lookupResult.code && lookupResult.data.length > 0) {
+                                    itm_code = lookupResult.data[0].itm_code;
+                                }
+
+                                if (itm_code) {
+                                    let insertItemScript = `INSERT INTO public.tbl_order_item 
+                                    (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, sales_order_item) 
+                                    VALUES ('${sap_order_no}', '${itm_code}', ${parseFloat(sapItem.OrderQuantity) || 0}, '', '',
+                                    '${ist_dt}', '1', '1', '${sapItem.SalesOrderItem || ''}')`;
+                                    await pgConn.execute(dbPrefix + lic_code, insertItemScript, config.connectionString());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
         } catch (error) {
             console.log(error);

@@ -34,7 +34,8 @@ exports.authEmployeeInformation = async (req, res, next) => {
                 script = `select  emp_code, emp_username, emp_userpassword, emp_ref_code, emp_name, emp_surname, emp_mobile_number,
                     emp_email, emp_div_code, div_desc as emp_div_desc, emp_dep_code, dep_desc as emp_dep_desc, emp_pos_code, pos_desc as emp_pos_desc, 
                     tbl_employee.emp_group_code, emp_group_desc as emp_group_desc, emp_gender, tbl_employee.emp_role_code, emp_role_desc,
-                    emp_flag, emp_image_profile, tbl_employee.ist_dt, tbl_employee.mdf_dt, tbl_employee.rm_dt, tbl_employee.off_code, tbl_office.off_desc
+                    emp_flag, emp_image_profile, tbl_employee.ist_dt, tbl_employee.mdf_dt, tbl_employee.rm_dt, tbl_employee.off_code, tbl_office.off_desc,
+                    tbl_petrol.ptrl_code, tbl_petrol.ptrl_desc
         
                     from tbl_employee 
                     left join tbl_division on tbl_employee.emp_div_code = tbl_division.div_code
@@ -46,6 +47,7 @@ exports.authEmployeeInformation = async (req, res, next) => {
                     left join tbl_employee_group on tbl_employee.emp_group_code = tbl_employee_group.emp_group_code
                     left join tbl_employee_role on tbl_employee.emp_role_code = tbl_employee_role.emp_role_code
                     left join tbl_office on tbl_employee.off_code = tbl_office.off_code 
+                    left join tbl_petrol on tbl_employee.ptrl_code = tbl_petrol.ptrl_code 
                     where emp_flag = '1' and emp_username = '${emp_username}' and emp_userpassword = '${emp_encode}'`;
                 script += ` order by emp_name asc;`
             }
