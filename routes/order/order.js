@@ -1356,7 +1356,7 @@ exports.addOrderInformation = async (req, res, next) => {
             VALUES 
             ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            'AOS', '${order_by || 'DTC'}', '${ship_cond || ''}', '${pay_term || ''}', 
+            'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
             '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
