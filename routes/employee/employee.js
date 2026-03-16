@@ -332,8 +332,7 @@ exports.setEmployeeInformation = async (req, res, next) => {
         //เช็คเฉพาะส่วนที่สำคัญ
         if (emp_code == undefined || off_code == undefined
             || emp_ref_code == undefined || emp_name == undefined || emp_surname == undefined || emp_mobile_number == undefined
-            || emp_email == undefined || emp_div_code == undefined || emp_dep_code == undefined || emp_pos_code == undefined
-            || emp_group_code == undefined || emp_gender == undefined || emp_role_code == undefined
+            || emp_email == undefined || emp_gender == undefined || emp_role_code == undefined
             || emp_image_profile == undefined || action == undefined || ptrl_code == undefined) {
             let response = [{
                 status: 'error',
@@ -347,6 +346,10 @@ exports.setEmployeeInformation = async (req, res, next) => {
         } else {
 
             let script = ``;
+            emp_div_code = emp_div_code == undefined ? '' : emp_div_code;
+            emp_dep_code = emp_dep_code == undefined ? '' : emp_dep_code;
+            emp_pos_code = emp_pos_code == undefined ? '' : emp_pos_code;
+            emp_group_code = emp_group_code == undefined ? '' : emp_group_code;
 
             if (off_code.toString().toUpperCase() == 'ALL') {
 
@@ -528,8 +531,7 @@ exports.addEmployeeInformation = async (req, res, next) => {
         //เช็คเฉพาะส่วนที่สำคัญ
         if (emp_username == undefined || off_code == undefined || emp_userpassword == undefined
             || emp_ref_code == undefined || emp_name == undefined || emp_surname == undefined || emp_mobile_number == undefined
-            || emp_email == undefined || emp_div_code == undefined || emp_dep_code == undefined || emp_pos_code == undefined
-            || emp_group_code == undefined || emp_gender == undefined || emp_role_code == undefined
+            || emp_email == undefined || emp_gender == undefined || emp_role_code == undefined
             || emp_image_profile == undefined || action == undefined || ptrl_code == undefined) {
             let response = [{
                 status: 'error',
@@ -543,6 +545,10 @@ exports.addEmployeeInformation = async (req, res, next) => {
         } else {
 
             let script = ``;
+            emp_div_code = emp_div_code == undefined ? '' : emp_div_code;
+            emp_dep_code = emp_dep_code == undefined ? '' : emp_dep_code;
+            emp_pos_code = emp_pos_code == undefined ? '' : emp_pos_code;
+            emp_group_code = emp_group_code == undefined ? '' : emp_group_code;
 
             let query_ptrl = `SELECT ptrl_code, ptrl_number, ptrl_desc FROM tbl_petrol WHERE ptrl_code = '${ptrl_code}'`
             let tbl_temporary_ptrl = await pgConn.get(dbPrefix + lic_code, query_ptrl, config.connectionString());

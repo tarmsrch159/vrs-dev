@@ -1334,6 +1334,7 @@ exports.addOrderInformation = async (req, res, next) => {
 
         let req_date_str = moment(deli_date_req).format('YYYYMMDD');
 
+        // ====================== หาค่า sh_cus_ref ล่าสุด ======================
         let scriptCheckShCusRef = `
             SELECT MAX(CAST(SUBSTRING(sh_cus_ref FROM 12) AS INTEGER)) as last_running 
             FROM public.tbl_order 
@@ -1356,7 +1357,7 @@ exports.addOrderInformation = async (req, res, next) => {
             VALUES 
             ('${order_no}', '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            'AOS', '${order_by || 'DTC'}', '${ship_cond || ''}', '${pay_term || ''}', 
+            'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
             '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
@@ -1380,9 +1381,19 @@ exports.addOrderInformation = async (req, res, next) => {
 
         let invalid_material_item = []
 
+        // ====================== หาค่า sales_order_item ล่าสุด ======================
+        let script_max_sales_order_item = `SELECT MAX(CAST(sales_order_item AS INTEGER)) as last_running FROM public.tbl_order_item`;
+        let check_max_result = await pgConn.get(dbPrefix + lic_code, script_max_sales_order_item, config.connectionString());
+        let last_sales_order_item = 0;
+        if (!check_max_result.code && check_max_result.data.length > 0 && check_max_result.data[0].last_running !== null) {
+            last_sales_order_item = parseInt(check_max_result.data[0].last_running);
+        }
+
         // ====================== เพิ่มข้อมูลลงใน tbl_order_item จาก order_item array ======================
         if (order_item && Array.isArray(order_item) && order_item.length > 0) {
             for (var i = 0; i < order_item.length; i++) {
+                last_sales_order_item += 10;
+                let sales_order_item = String(last_sales_order_item);
                 var itm_code = order_item[i].itm_code;
                 var item_quantity = parseFloat(order_item[i].item_quantity) || 0;
                 var itm_material_number = order_item[i].itm_material_number;
@@ -1402,19 +1413,20 @@ exports.addOrderInformation = async (req, res, next) => {
                             for (var k = 0; k < order_item[i].item_text.length; k++) {
                                 var item_text = order_item[i].item_text[k];
                                 let script_item = `INSERT INTO public.tbl_order_item 
-                                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant) 
+                                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item) 
                                 VALUES ('${order_no}', '${itm_code}', ${item_quantity}, '${item_text.long_text_id}', '${item_text.long_text}',
-                                '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '${deli_plant || ''}')`;
+                                '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
                                 await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
                             }
                         } else {
                             // กรณีที่ไม่มี item_text
                             let script_item = `INSERT INTO public.tbl_order_item 
-                            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
+                            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item) 
                             VALUES ('${order_no}', '${itm_code}', ${item_quantity}, '', '',
-                            '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0')`;
+                            '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
                             await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
                         }
+
                     } else {
                         // ===== ข้ามรายการน้ำมันที่ไม่มีอยู่ในระบบ ======
                         console.log(`ข้ามรายการน้ำมัน: material number ${itm_material_number} ไม่พบในระบบ`);
