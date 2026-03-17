@@ -269,6 +269,136 @@ exports.getOrderInformation = async (req, res, next) => {
     });
 }
 
+exports.getOrderInformationByID = async (req, res, next) => {
+
+    var xresult = [];
+
+    return (async () => {
+
+        let lic_code = req.header('lic_code');
+        let { id, action } = req.body[0];
+
+        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
+        if (id == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+            res.status(200).send(response);
+            return;
+        }
+
+        // ========== Query ข้อมูล Order หลัก ==========
+        let orderScript = `SELECT 
+            tbl_order.id, tbl_order.order_no, tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
+            tbl_order_type.ord_type_desc,
+            tbl_petrol_group.ptrl_group_desc,
+            tbl_order.order_status,
+            tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
+            tbl_petrol.ptrl_desc as station, tbl_petrol.ptrl_code,
+            tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
+            tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_master_time.time_value as RequestTime, 
+            tbl_order.description, tbl_order.sh_cus_date_ref, 
+            tbl_order.status_deli, tbl_order.status_block, tbl_order.status_sd_process, 
+            tbl_order.status_check, tbl_order.sd_doc_reject, tbl_order.cus_group, 
+            tbl_order.hana_created, tbl_order.hana_time, tbl_order.created_by, 
+            tbl_order.ist_dt, tbl_order.mdf_dt, tbl_order.rm_dt,
+            tbl_order.auto_order
+            FROM tbl_order  
+            LEFT JOIN tbl_order_type ON tbl_order.order_type = tbl_order_type.ord_type_code
+            LEFT JOIN tbl_petrol_group ON tbl_petrol_group.ptrl_group_code = tbl_order.order_group
+            LEFT JOIN tbl_petrol ON tbl_order.ship_to = tbl_petrol.ptrl_number
+            LEFT JOIN tbl_master_time ON tbl_order.deli_time_req = tbl_master_time.time_code
+            WHERE tbl_order.rm_dt IS NULL AND tbl_order.id = ${id}`;
+
+        let orderResult = await pgConn.get(dbPrefix + lic_code, orderScript, config.connectionString());
+
+        if (orderResult.code) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-3',
+                message: 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+            res.status(200).send(response);
+            return;
+        }
+
+        if (orderResult.data.length === 0) {
+            let response = [{
+                status: 'success',
+                invalid_code: '0',
+                message: 'ไม่พบข้อมูล Order',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+            res.status(200).send(response);
+            return;
+        }
+
+        let orderData = JSON.parse(JSON.stringify(orderResult.data[0]).replace(/\:null/gi, "\:\"\""));
+
+        // ========== Query ข้อมูล Order Items (น้ำมัน) ==========
+        let itemScript = `SELECT 
+            tbl_order_item.id, tbl_order_item.order_no, tbl_order_item.item_no,
+            tbl_petrol_tank.tnk_number as tank_number,
+            tbl_order_item.item_qty, tbl_order_item.deli_plant, 
+            tbl_order_item.long_text_id, tbl_order_item.long_text,
+            tbl_order_item.sales_order_item, tbl_order_item.auto_order,
+            tbl_order_item.sd_reject_reason, tbl_order_item.sd_process_status, 
+            tbl_order_item.deli_status, tbl_order_item.misc_deli_no,
+            tbl_order_item.ist_dt, tbl_order_item.mdf_dt,
+            tbl_item.itm_desc as product, tbl_item.itm_material_number, tbl_item.itm_code
+            FROM tbl_order_item
+            LEFT JOIN tbl_item ON tbl_order_item.item_no = tbl_item.itm_code
+            LEFT JOIN tbl_petrol_tank ON tbl_order_item.item_no = tbl_petrol_tank.itm_code 
+                                      AND tbl_petrol_tank.ptrl_code = '${orderData.ptrl_code}'
+            WHERE tbl_order_item.order_no = '${id}' 
+            AND tbl_order_item.order_item_flag = '1'
+            ORDER BY tbl_order_item.id ASC`;
+
+        let itemResult = await pgConn.get(dbPrefix + lic_code, itemScript, config.connectionString());
+        let orderItems = [];
+        if (!itemResult.code && itemResult.data.length > 0) {
+            orderItems = JSON.parse(JSON.stringify(itemResult.data).replace(/\:null/gi, "\:\"\""));
+        }
+
+
+
+
+
+        // ========== Return Success Response ==========
+        let response = [{
+            status: 'success',
+            invalid_code: '0',
+            message: '',
+            data: orderData,
+            order_items: orderItems,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        }]
+
+        res.status(200).send(response);
+        return;
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: xresult,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+    });
+}
+
+
+
 exports.getOrderReportInformation = async (req, res, next) => {
 
     var xresult = [];
@@ -1168,7 +1298,7 @@ exports.getConfirmOrder = async (req, res, next) => {
             maxBodyLength: Infinity,
             url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI001/SOCreation',
             headers: {
-                'APIKey': '',
+                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
                 'Content-Type': 'application/json'
             },
             data: payloadData
@@ -1366,7 +1496,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
             maxBodyLength: Infinity,
             url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI024/SODetail',
             headers: {
-                'APIKey': '',
+                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
                 'Content-Type': 'application/json'
             },
             data: payloadData
@@ -1390,6 +1520,52 @@ exports.getOrderInformationHana = async (req, res, next) => {
                 if (!check_order.code) {
                     if (check_order.data.length > 0) {
                         console.log("เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
+
+                        // ================ เช็ค ship_to ว่ามีใน tbl_petrol หรือไม่ ==================
+                        let isOrderComplete = true;
+                        if (salesOrder.ShipToParty) {
+                            let check_script_ship_to = `SELECT ptrl_number FROM tbl_petrol WHERE ptrl_number = '${salesOrder.ShipToParty}' LIMIT 1`;
+                            let check_ship_to = await pgConn.get(dbPrefix + lic_code, check_script_ship_to, config.connectionString());
+                            if (check_ship_to.code || check_ship_to.data.length === 0) {
+                                console.log("ไม่เจอ ship_to (tbl_petrol) : " + salesOrder.ShipToParty);
+                                isOrderComplete = false;
+                            }
+                        } else {
+                            isOrderComplete = false;
+                        }
+
+                        // ================ เช็ค Material ใน Items ว่ามีใน tbl_item หรือไม่ ==================
+                        if (isOrderComplete && salesOrder.Items && Array.isArray(salesOrder.Items) && salesOrder.Items.length > 0) {
+                            for (let j = 0; j < salesOrder.Items.length; j++) {
+                                let item = salesOrder.Items[j];
+                                if (item.Material) {
+                                    let check_script_material = `SELECT itm_code FROM tbl_item WHERE itm_code = '${item.Material}' LIMIT 1`;
+                                    let check_material = await pgConn.get(dbPrefix + lic_code, check_script_material, config.connectionString());
+                                    if (check_material.code || check_material.data.length === 0) {
+                                        console.log("ไม่เจอ Material (tbl_item) : " + item.Material);
+                                        isOrderComplete = false;
+                                        break;
+                                    }
+                                } else {
+                                    isOrderComplete = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // ================ ถ้า Order ไม่สมบูรณ์ → set status 9 แล้วข้ามไปอันถัดไป ==================
+                        if (!isOrderComplete) {
+                            console.log(`Order ${salesOrder.SHCustomerReference} ไม่สมบูรณ์ (ship_to หรือ material ไม่ตรงกับในระบบ) → order_status = 9`);
+                            let update_incomplete = `UPDATE tbl_order SET 
+                                order_no = '${salesOrder.SalesOrder || ''}',
+                                order_status = 9,
+                                mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+                                WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
+                            await pgConn.execute(dbPrefix + lic_code, update_incomplete, config.connectionString());
+                            continue;
+                        }
+
+                        // ================ Order สมบูรณ์ → อัพเดตทุกฟิลด์ ==================
                         let update_script_order = `UPDATE tbl_order SET 
                             order_no = '${salesOrder.SalesOrder || ''}',
                             order_type = '${salesOrder.SalesOrderType || ''}',
@@ -1414,6 +1590,26 @@ exports.getOrderInformationHana = async (req, res, next) => {
                             mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
                             WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
                         await pgConn.execute(dbPrefix + lic_code, update_script_order, config.connectionString());
+
+                        // ================ อัพเดต tbl_order_item จาก Items ==================
+                        let orderId = check_order.data[0].id;
+                        if (salesOrder.Items && Array.isArray(salesOrder.Items) && salesOrder.Items.length > 0) {
+                            for (let j = 0; j < salesOrder.Items.length; j++) {
+                                let item = salesOrder.Items[j];
+
+                                let update_item_script = `UPDATE tbl_order_item SET 
+                                    sales_order_item = '${item.SalesOrderItem || ''}',
+                                    sd_reject_reason = '${item.SalesDocumentRjcnReason || ''}',
+                                    sd_process_status = '${item.SDProcessStatus || ''}',
+                                    deli_status = '${item.DeliveryStatus || ''}',
+                                    misc_deli_no = '${item.MiscellaneousDeliveryNumber || ''}',
+                                    mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}'
+                                    WHERE order_no = '${orderId}' 
+                                    AND item_no = '${item.Material || ''}' 
+                                    AND order_item_flag = '1'`;
+                                await pgConn.execute(dbPrefix + lic_code, update_item_script, config.connectionString());
+                            }
+                        }
                     }
                 } else {
                     console.log("ไม่เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
@@ -1528,7 +1724,7 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             maxBodyLength: Infinity,
             url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI022/SOUpdate',
             headers: {
-                'APIKey': '',
+                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
                 'Content-Type': 'application/json'
             },
             data: payloadData
@@ -1809,7 +2005,7 @@ exports.addOrderInformation = async (req, res, next) => {
                 'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}',
                 ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}',
                 '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
-                'A', '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0', '0') RETURNING id`;
+                'A', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '0') RETURNING id`;
 
         script = script.replace(/'NULL'/gi, "NULL");
         let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
