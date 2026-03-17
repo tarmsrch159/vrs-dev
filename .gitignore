@@ -23,3 +23,5 @@ files/
 
 # Package lock (optional, remove if you want to track it)
 # package-lock.json
+
+package-lock.json

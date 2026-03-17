@@ -788,24 +788,24 @@ exports.getOrderRunout = async (req, res, next) => {
 // =========== ดึงข้อมูลรายการสั่งซื้อ ที่มีการยืนยันจาก HANA ===========
 exports.getConfirmOrder = async (req, res, next) => {
 
+    let lic_code = req.header('lic_code');
+    let { order_id, action } = req.body[0];
+
+    if (!order_id || !action) {
+        let response = [{
+            status: 'error',
+            invalid_code: '-1',
+            message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        }];
+        res.status(200).send(response);
+        return;
+    }
+
     return (async () => {
-        let lic_code = req.header('lic_code');
-        let { order_id, action } = req.body[0];
-
-        if (!order_id || !action) {
-            let response = [{
-                status: 'error',
-                invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
-                data: [],
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
-            return;
-        }
-
         // ================ ดึงข้อมูล tbl_order ==================
-        let orderScript = `SELECT * FROM tbl_order WHERE id = '${order_id}' AND rm_dt IS NULL LIMIT 1`;
+        let orderScript = `SELECT * FROM tbl_order WHERE id = '${order_id}' AND order_flag = '1' LIMIT 1`;
         let orderResult = await pgConn.get(dbPrefix + lic_code, orderScript, config.connectionString());
 
         if (orderResult.code || orderResult.data.length === 0) {
@@ -820,18 +820,16 @@ exports.getConfirmOrder = async (req, res, next) => {
             return;
         }
 
-        console.log(orderResult.data[0])
-
         let orderData = orderResult.data[0];
 
         // ================ ดึงข้อมูล tbl_order_item ==================
         let itemScript = `
-            SELECT i.item_no, i.item_qty, i.long_text_id, i.long_text, t.itm_material_number, i.sales_order_item 
+            SELECT i.item_no, i.item_qty, i.long_text_id, i.long_text, t.itm_material_number, i.sales_order_item
             FROM tbl_order_item i
             LEFT JOIN tbl_item t ON i.item_no = t.itm_code
-            WHERE i.order_no = '${orderData.id}' AND i.rm_dt IS NULL AND i.order_item_flag = '1'
+            WHERE i.order_no = '${orderData.id}' AND i.order_item_flag = '1' AND i.order_item_flag = '1'
             ORDER BY i.id ASC
-                `;
+        `;
         let itemResult = await pgConn.get(dbPrefix + lic_code, itemScript, config.connectionString());
         // ================ Construct SAP Payload ==================
         let sapItems = [];
@@ -860,16 +858,27 @@ exports.getConfirmOrder = async (req, res, next) => {
             });
         }
 
-
         let cus_date_ref_formatted = orderData.cus_date_ref ? moment(orderData.cus_date_ref).format('YYYYMMDD') : "";
         let deli_date_req_formatted = orderData.deli_date_req ? moment(orderData.deli_date_req).format('YYYYMMDD') : "";
         let sh_cus_date_ref_formatted = orderData.sh_cus_date_ref ? moment(orderData.sh_cus_date_ref).format('YYYYMMDD') : "";
 
+        if (!orderData.order_type || !orderData.order_group) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'กรุณาระบุประเภทออเดอร์ และกลุ่มออเดอร์',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            return;
+        }
+
         let payloadData = JSON.stringify({
             "SalesDocuments": [
                 {
-                    "SalesOrderType": orderData.order_type || "",
-                    "SalesOrganization": orderData.order_group || "1900",
+                    "SalesOrderType": orderData.order_type,
+                    "SalesOrganization": orderData.order_group,
                     "DistributionChannel": orderData.chanel || "01",
                     "OrganizationDivision": orderData.division || "04",
                     "ShipToParty": orderData.ship_to || "",
@@ -889,6 +898,9 @@ exports.getConfirmOrder = async (req, res, next) => {
                 }
             ]
         });
+
+        console.log(payloadData);
+        return;
 
         // ================ API Config ==================
         let axiosConfig = {
