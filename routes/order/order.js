@@ -18,15 +18,16 @@ exports.getOrderInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { order_no, start_date, end_date, order_type, ord_status, auto_order,
+        let { order_no, start_date, end_date, order_type, order_status, auto_order, status_deli,
             search, page_index, page_limit, action } = req.body[0];
         page_index == undefined ? page_index = 1 : page_index;
         page_limit == undefined ? page_limit = 10 : page_limit;
         auto_order = auto_order == undefined ? 'ALL' : auto_order;
+        status_deli = status_deli == undefined ? 'ALL' : status_deli;
 
         // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
-        if (order_no == undefined || start_date == undefined || end_date == undefined
-            || order_type == undefined || ord_status == undefined
+        if (start_date == undefined || end_date == undefined
+            || order_type == undefined || order_status == undefined
             || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -142,8 +143,8 @@ exports.getOrderInformation = async (req, res, next) => {
             }
 
             // ========== ต่อ Query String ==========
-            if (ord_status.toString().toUpperCase() != 'ALL') {
-                script += ` and tbl_order.status_deli = '${ord_status}' `
+            if (status_deli.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.status_deli = '${status_deli}' `
             }
 
             if (order_type.toString().toUpperCase() != 'ALL') {
@@ -154,6 +155,13 @@ exports.getOrderInformation = async (req, res, next) => {
                 script += ` and tbl_order.auto_order = '${auto_order}' `
             }
 
+            if (order_status.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.order_status = '${order_status}' `
+            }
+
+            if (status_deli.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.status_deli = '${status_deli}' `
+            }
 
             if (search != '') {
                 script += ` and (tbl_order.order_no like '%${search}%' 
@@ -196,9 +204,14 @@ exports.getOrderInformation = async (req, res, next) => {
                         where tbl_order.rm_dt IS NULL `;
                     }
 
-                    if (ord_status.toString().toUpperCase() != 'ALL') {
-                        script += ` and tbl_order.status_deli = '${ord_status}' `
+                    if (order_status.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.order_status = '${order_status}' `
                     }
+
+                    if (status_deli.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.status_deli = '${status_deli}' `
+                    }
+
                     if (order_type.toString().toUpperCase() != 'ALL') {
                         script += ` and tbl_order.order_type = '${order_type}' `
                     }
@@ -325,7 +338,10 @@ exports.getLoggingOrderInformation = async (req, res, next) => {
                 or tbl_action_logs.action_desc = 'manual' 
                 or tbl_action_logs.action_desc = 'cancel' 
                 or tbl_action_logs.action_desc = 'confirm' 
-                or tbl_action_logs.action_desc = 'approve') `;
+                or tbl_action_logs.action_desc = 'approve'
+                or tbl_action_logs.action_desc = 'confirm_order_sap'
+                or tbl_action_logs.action_desc = 'cancel_order_sap'
+                ) `;
             }
 
             script += ` order by tbl_action_logs.ist_dt desc `
@@ -898,7 +914,12 @@ exports.getConfirmOrder = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_sap', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
+
+            let update_order_status_script = `update tbl_order set order_status = '1', mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' `
+            update_order_status_script += ` where id = '${order_id}'`;
+            await pgConn.execute(dbPrefix + lic_code, update_order_status_script, config.connectionString());
+
 
             // =========== เชื่อมต่อ SAP Data ลงฐานข้อมูล ===========
             let sap_response = api_response.data;
@@ -914,7 +935,7 @@ exports.getConfirmOrder = async (req, res, next) => {
                     // ===== Convert SAP Date to SQL Date =====
                     let creation_dt = sap_order.CreationDate ? moment(sap_order.CreationDate, 'YYYYMMDD').format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
                     let creation_tm = sap_order.CreationTime ? moment(sap_order.CreationTime, 'HHmmss').format('HH:mm:ss') : moment().format('HH:mm:ss');
-                    let ist_dt = `${creation_dt} ${creation_tm}`;
+                    let ist_dt = `${creation_dt} ${creation_tm} `;
                     // ===== Convert SAP Date to SQL Date =====
                     let deli_date_req = sap_order.RequestedDeliveryDate ? moment(sap_order.RequestedDeliveryDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
                     let cus_date_ref = sap_order.CustomerReferenceDate ? moment(sap_order.CustomerReferenceDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
@@ -923,41 +944,41 @@ exports.getConfirmOrder = async (req, res, next) => {
                         // ===== ถ้าเจอ SHCustomerReference แล้ว Update =====
                         let existing_order_no = checkResult.data[0].order_no;
                         let existing_id = checkResult.data[0].id;
-                        let updateOrderScript = `UPDATE public.tbl_order SET 
-                            order_no = '${sap_order.SalesOrder}',
-                            status_deli = '${sap_order.OverallSDProcessStatus || ''}',
-                            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}'
+                        let updateOrderScript = `UPDATE public.tbl_order SET
+            order_no = '${sap_order.SalesOrder}',
+                status_deli = '${sap_order.OverallSDProcessStatus || ''}',
+                    mdf_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}'
                             WHERE sh_cus_ref = '${sh_cus_ref}'`;
                         await pgConn.execute(dbPrefix + lic_code, updateOrderScript, config.connectionString());
 
                         // ===== Update Items =====
                         if (sap_order.Items && Array.isArray(sap_order.Items)) {
                             for (let sapItem of sap_order.Items) {
-                                let updateItemScript = `UPDATE public.tbl_order_item SET 
-                                    order_no = '${existing_id}',
-                                    sales_order_item = '${sapItem.SalesOrderItem}'
-                                    WHERE (order_no = '${existing_order_no}' OR order_no = '${existing_id}') 
-                                    AND item_no IN (SELECT itm_code FROM tbl_item WHERE itm_material_number = '${sapItem.Material}')`;
+                                let updateItemScript = `UPDATE public.tbl_order_item SET
+            order_no = '${existing_id}',
+                sales_order_item = '${sapItem.SalesOrderItem}'
+            WHERE(order_no = '${existing_order_no}' OR order_no = '${existing_id}') 
+                                    AND item_no IN(SELECT itm_code FROM tbl_item WHERE itm_material_number = '${sapItem.Material}')`;
                                 await pgConn.execute(dbPrefix + lic_code, updateItemScript, config.connectionString());
                             }
                         }
                     } else {
                         // ===== ถ้าไม่เจอ SHCustomerReference แล้ว Insert =====
                         let sap_order_no = sap_order.SalesOrder;
-                        let insertOrderScript = `INSERT INTO public.tbl_order 
-                        (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
-                        cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
-                        deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
-                        status_deli, ist_dt, order_flag, auto_order) 
-                        VALUES 
-                        ('${sap_order_no}', '${sap_order.SalesOrderType || ''}', '${sap_order.SalesOrganization || ''}', '${sap_order.DistributionChannel || '01'}', '${sap_order.OrganizationDivision || '04'}', 
-                        '${sap_order.SoldToParty || ''}', '${sap_order.ShipToParty || ''}', '${sap_order.CustomerReference || ''}', 
-                        ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'}, 
-                        '${sap_order.CustomerPurchaseOrderType || 'AOS'}', '${sap_order.NameofOrderer || ''}', '', '', 
-                        ${deli_date_req ? "'" + deli_date_req + "'" : 'NULL'}, '${sap_order.DeliveryTime || ''}', 
-                        '${sap_order.Description || ''}', '${sap_order.SHCustomerReference || ''}', 
-                        ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'}, 
-                        '${sap_order.OverallSDProcessStatus || '0'}', '${ist_dt}', '1', '1') RETURNING id`;
+                        let insertOrderScript = `INSERT INTO public.tbl_order
+                (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
+                    cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+                    deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+                    status_deli, ist_dt, order_flag, auto_order)
+            VALUES
+                ('${sap_order_no}', '${sap_order.SalesOrderType || ''}', '${sap_order.SalesOrganization || ''}', '${sap_order.DistributionChannel || '01'}', '${sap_order.OrganizationDivision || '04'}',
+                    '${sap_order.SoldToParty || ''}', '${sap_order.ShipToParty || ''}', '${sap_order.CustomerReference || ''}',
+                    ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
+                    '${sap_order.CustomerPurchaseOrderType || 'AOS'}', '${sap_order.NameofOrderer || ''}', '', '',
+                    ${deli_date_req ? "'" + deli_date_req + "'" : 'NULL'}, '${sap_order.DeliveryTime || ''}',
+                    '${sap_order.Description || ''}', '${sap_order.SHCustomerReference || ''}',
+                    ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
+                    '${sap_order.OverallSDProcessStatus || '0'}', '${ist_dt}', '1', '1') RETURNING id`;
 
                         insertOrderScript = insertOrderScript.replace(/'NULL'/gi, "NULL");
                         let insertResult = await pgConn.get(dbPrefix + lic_code, insertOrderScript, config.connectionString());
@@ -977,10 +998,11 @@ exports.getConfirmOrder = async (req, res, next) => {
                                     }
 
                                     if (itm_code) {
-                                        let insertItemScript = `INSERT INTO public.tbl_order_item 
-                                        (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, sales_order_item) 
-                                        VALUES ('${new_order_id}', '${itm_code}', ${parseFloat(sapItem.OrderQuantity) || 0}, '', '',
-                                        '${ist_dt}', '1', '1', '${sapItem.SalesOrderItem || ''}')`;
+                                        let insertItemScript = `INSERT INTO public.tbl_order_item
+                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, sales_order_item)
+            VALUES('${new_order_id}', '${itm_code}', ${parseFloat(sapItem.OrderQuantity) || 0
+                                            }, '', '',
+            '${ist_dt}', '1', '1', '${sapItem.SalesOrderItem || ''}')`;
                                         await pgConn.execute(dbPrefix + lic_code, insertItemScript, config.connectionString());
                                     }
                                 }
@@ -1216,7 +1238,7 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order จาก SAP', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_sap', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
             return;
 
         } catch (error) {
@@ -1231,7 +1253,7 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_no }), errMsg, action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_error', JSON.stringify({ order_no }), errMsg, action[0].value);
             return;
         }
 
@@ -1274,11 +1296,11 @@ exports.getOrderRunout = async (req, res, next) => {
         // เช็ค order ที่ auto_order = '1' และ order_no ยังว่าง/null
         // และ ist_dt เกินเวลากำหนด (RUNOUT_TIMEOUT_MINUTES นาที)
         let script = `SELECT id, order_no, order_type, order_group, sold_to, ship_to,
-                deli_date_req, description, auto_order, ist_dt,
-                EXTRACT(EPOCH FROM(NOW() - ist_dt)) / 60 AS minutes_since_created
+            deli_date_req, description, auto_order, ist_dt,
+            EXTRACT(EPOCH FROM(NOW() - ist_dt)) / 60 AS minutes_since_created
             FROM public.tbl_order 
             WHERE auto_order = '1'
-            AND(order_no IS NULL OR order_no = '') 
+        AND(order_no IS NULL OR order_no = '') 
             AND rm_dt IS NULL 
             AND ist_dt <= NOW() - INTERVAL '${RUNOUT_TIMEOUT_MINUTES} minutes'
             ORDER BY ist_dt ASC`;
@@ -1458,7 +1480,7 @@ exports.addOrderInformation = async (req, res, next) => {
             SELECT MAX(CAST(SUBSTRING(sh_cus_ref FROM 12) AS INTEGER)) as last_running 
             FROM public.tbl_order 
             WHERE sh_cus_ref LIKE 'AOS%' AND sh_cus_ref ~ '^AOS[0-9]{8}[0-9]+$'
-        `;
+            `;
         let checkShCusRefResult = await pgConn.get(dbPrefix + lic_code, scriptCheckShCusRef, config.connectionString());
 
         let running_number = 1;
@@ -1468,18 +1490,18 @@ exports.addOrderInformation = async (req, res, next) => {
         sh_cus_ref = 'AOS' + req_date_str + String(running_number).padStart(4, '0');
 
         // ====================== เพิ่มข้อมูลลงใน tbl_order ======================
-        script = `INSERT INTO public.tbl_order 
-            (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
-            cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
-            deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
-            status_deli, ist_dt, order_flag, auto_order) 
-            VALUES 
-            (NULL, '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}', 
-            '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}', 
-            ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
-            '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0') RETURNING id`;
+        script = `INSERT INTO public.tbl_order
+            (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
+                cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+                deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+                status_deli, ist_dt, order_flag, auto_order, order_status)
+        VALUES
+            (NULL, '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}',
+                '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
+                'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}',
+                ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}',
+                '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
+                'A', '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0', '0') RETURNING id`;
 
         script = script.replace(/'NULL'/gi, "NULL");
         let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
@@ -1532,18 +1554,18 @@ exports.addOrderInformation = async (req, res, next) => {
                             // กรณีที่มี item_text
                             for (var k = 0; k < order_item[i].item_text.length; k++) {
                                 var item_text = order_item[i].item_text[k];
-                                let script_item = `INSERT INTO public.tbl_order_item 
-                                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item) 
-                                VALUES ('${order_id}', '${itm_code}', ${item_quantity}, '${item_text.long_text_id}', '${item_text.long_text}',
-                                '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
+                                let script_item = `INSERT INTO public.tbl_order_item
+            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item)
+        VALUES('${order_id}', '${itm_code}', ${item_quantity}, '${item_text.long_text_id}', '${item_text.long_text}',
+            '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
                                 await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
                             }
                         } else {
                             // กรณีที่ไม่มี item_text
-                            let script_item = `INSERT INTO public.tbl_order_item 
-                            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item) 
-                            VALUES ('${order_id}', '${itm_code}', ${item_quantity}, '', '',
-                            '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
+                            let script_item = `INSERT INTO public.tbl_order_item
+            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item)
+        VALUES('${order_id}', '${itm_code}', ${item_quantity}, '', '',
+            '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
                             await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
                         }
 
@@ -1673,14 +1695,14 @@ exports.setOrderInformation = async (req, res, next) => {
             let oldOrder = checkOrderNo.data[0];
             let new_order_no = 'ord-' + moment().format('x');
             let addOrderScript = `INSERT INTO tbl_order(
-                order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
-                cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
-                deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
-                auto_order, order_ref, ist_dt, status_deli, order_flag) 
-            VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
-                $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-                $21, $22, $23) RETURNING id`;
+                order_no, order_type, order_group, chanel, division, sold_to, ship_to,
+                cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+                deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+                auto_order, order_ref, ist_dt, status_deli, order_flag)
+        VALUES(
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+            $21, $22, $23) RETURNING id`;
 
             let tbl_temporary_add_order = await pgConn.execute2params(addOrderScript, [
                 new_order_no, oldOrder.order_type, oldOrder.order_group, oldOrder.chanel,
@@ -1747,33 +1769,33 @@ exports.setOrderInformation = async (req, res, next) => {
                     if (order_item_no) {
                         // ============= ดึงข้อมูลเดิมมาอ้างอิง =============
                         // Use both order_no (string) and oldOrder.id to find precisely if exists.
-                        let getItemScript = `SELECT * FROM public.tbl_order_item WHERE (order_no = '${order_no}' OR order_no = '${oldOrder.id}') and item_no = '${order_item_no}' order by id desc limit 1`;
+                        let getItemScript = `SELECT * FROM public.tbl_order_item WHERE(order_no = '${order_no}' OR order_no = '${oldOrder.id}') and item_no = '${order_item_no}' order by id desc limit 1`;
                         let oldItemResult = await pgConn.get(dbPrefix + lic_code, getItemScript, config.connectionString());
 
                         if (!oldItemResult.code && oldItemResult.data.length > 0) {
                             let oldItem = oldItemResult.data[0];
                             //============ ดึงข้อมูลเก่ามาสร้าง Row ใหม่ =============
-                            let script_item = `INSERT INTO public.tbl_order_item 
-                            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
-                            VALUES (
-                            '${new_order_id}', '${oldItem.item_no}', ${item_quantity}, '${oldItem.long_text_id || ''}', 
-                            '${oldItem.long_text || ''}', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0'
-                            )`;
+                            let script_item = `INSERT INTO public.tbl_order_item
+            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order)
+        VALUES(
+            '${new_order_id}', '${oldItem.item_no}', ${item_quantity}, '${oldItem.long_text_id || ''}',
+            '${oldItem.long_text || ''}', '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0'
+        )`;
                             await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
 
 
 
                             //============ ปิด Row เก่า =============
-                            let disableOldScript = `UPDATE public.tbl_order_item SET order_item_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE id = ${oldItem.id}`;
+                            let disableOldScript = `UPDATE public.tbl_order_item SET order_item_flag = '0', rm_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}' WHERE id = ${oldItem.id} `;
                             await pgConn.execute(dbPrefix + lic_code, disableOldScript, config.connectionString());
 
                         } else {
                             // ============= กรณีหาของเดิมไม่เจอ ให้ทำการ Insert ของใหม่เข้าไปเลยครับ โดยผูกกับ new_order_id =============
-                            let script_item = `INSERT INTO public.tbl_order_item 
-                            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order) 
-                            VALUES (
-                            '${new_order_id}', '${order_item_no}', ${item_quantity}, '', '', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0'
-                            )`;
+                            let script_item = `INSERT INTO public.tbl_order_item
+            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order)
+        VALUES(
+            '${new_order_id}', '${order_item_no}', ${item_quantity}, '', '', '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0'
+        )`;
                             await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
 
                         }
@@ -1924,7 +1946,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
             let order_noIn = order_noArr.map(c => `'${c}'`).join(', ');
 
             // ================= เช็ค Validate Status Deli และ Flag =================
-            let scriptCheckStatus = `SELECT order_no, status_deli, order_flag FROM tbl_order WHERE order_no IN (${order_noIn})`;
+            let scriptCheckStatus = `SELECT order_no, status_deli, order_flag FROM tbl_order WHERE order_no IN(${order_noIn})`;
             let status_deli_res = await pgConn.get(dbPrefix + lic_code, scriptCheckStatus, config.connectionString());
 
             if (status_deli_res.code || status_deli_res.data.length === 0) {
@@ -1987,14 +2009,14 @@ exports.removeOrderInformationById = async (req, res, next) => {
             // ================= จบการเช็ค Status Deli =================
             let validOrderNoIn = validOrders.map(c => `'${c}'`).join(', ');
 
-            let script = `update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-            where order_no in (${validOrderNoIn});`
+            let script = `update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}' 
+            where order_no in (${validOrderNoIn}); `
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
 
                 let successMessage = skippedOrders.length > 0
-                    ? `ลบข้อมูล Order สำเร็จ ${validOrders.length} รายการ (ข้าม Order ที่สถานะไม่ใช่ A จำนวน ${skippedOrders.length} รายการ)`
+                    ? `ลบข้อมูล Order สำเร็จ ${validOrders.length} รายการ(ข้าม Order ที่สถานะไม่ใช่ A จำนวน ${skippedOrders.length} รายการ)`
                     : 'ลบข้อมูล Order ได้สำเร็จทั้งหมด';
                 //debugger
                 let response = [{
@@ -2006,7 +2028,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
                 }]
 
                 res.status(200).send(response);
-                let event_type = req.body[0].event_type || 'cancel';
+                let event_type = req.body[0].event_type || 'cancel_aos';
                 let logPayload = { order_no: order_no, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'success', action[0].value);
                 return;
@@ -2019,7 +2041,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
                 res.status(200).send(response);
-                let event_type = req.body[0].event_type || 'cancel';
+                let event_type = req.body[0].event_type || 'cancel_aos';
                 let logPayload = { order_no: order_no, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
                 return;
