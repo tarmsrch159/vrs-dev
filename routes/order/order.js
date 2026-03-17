@@ -70,6 +70,7 @@ exports.getOrderInformation = async (req, res, next) => {
                 tbl_order.ist_dt, tbl_order.mdf_dt, tbl_order.rm_dt,
                 json_build_object(
                     'id', tbl_order_item.id,
+                    'sales_order_item', tbl_order_item.sales_order_item,
                     'itm_code', tbl_item.itm_code,
                     'itm_material_number', tbl_item.itm_material_number,
                     'product', tbl_item.itm_desc,
@@ -108,6 +109,7 @@ exports.getOrderInformation = async (req, res, next) => {
                 tbl_order.ist_dt, tbl_order.mdf_dt, tbl_order.rm_dt,
                 json_build_object(
                     'id', tbl_order_item.id,
+                    'sales_order_item', tbl_order_item.sales_order_item,
                     'itm_code', tbl_item.itm_code,
                     'tnk_number', tbl_petrol_tank.tnk_number,
                     'petrol_desc', tbl_petrol.ptrl_desc,
@@ -1139,21 +1141,22 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             return;
         }
 
-        var script_check_sales_order = `SELECT * FROM tbl_order WHERE order_no = '${order_no}'`;
-        var check_sales_order = await pgConn.get(dbPrefix + lic_code, script_check_sales_order, config.connectionString());
-        if (!check_sales_order.code && check_sales_order.data.length > 0) {
-            let response = [{
-                status: 'error',
-                invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
-                data: [],
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
-            return;
-        }
+        // ========== เช็ีคก่อนว่ามี order มั้ย ================
+        // var script_check_sales_order = `SELECT * FROM tbl_order WHERE order_no = '${order_no}'`;
+        // var check_sales_order = await pgConn.get(dbPrefix + lic_code, script_check_sales_order, config.connectionString());
+        // if (!check_sales_order.code && check_sales_order.data.length > 0) {
+        //     let response = [{
+        //         status: 'error',
+        //         invalid_code: '-1',
+        //         message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+        //         data: [],
+        //         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        //     }];
+        //     res.status(200).send(response);
+        //     return;
+        // }
 
-        console.log("check_sales_order.data", check_sales_order.data)
+        // console.log("check_sales_order.data", check_sales_order.data)
 
         // ================ Construct HANA Payload ==================
         let itemsArr = [];
@@ -1163,15 +1166,17 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             itemsArr = [{}];
         }
 
+        console.log(itemsArr)
+
         let sapItems = itemsArr.map((item, index) => {
-            let salesOrderItem = String((index + 1) * 10);
 
             return {
-                "SalesOrderItem": salesOrderItem,
-                // หากค่า item เดิมที่ถูกส่งมามี key/value อื่นๆ อยู่แล้ว จะถูกดึงมารวมใน Object นี้ด้วย
-                ...(typeof item === 'object' ? item : {})
+                "SalesOrderItem": item.SalesOrderItem,
+                "SalesDocumentRjcnReason": "85"
             };
         });
+
+        console.log(sapItems)
 
         let payloadData = JSON.stringify({
             "SalesDocuments": [
@@ -1182,6 +1187,8 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             ]
 
         });
+
+
 
         console.log(payloadData)
 
