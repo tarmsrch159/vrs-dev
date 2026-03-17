@@ -10,6 +10,7 @@ const petrol_worked = require('./petrol-worked-date')
 const petrol_tank = require('./petrol-tank')
 const petrol_depot = require('./petrol-depot')
 const petrol_merge_job = require('./petrol-merge-job')
+const petrol_type = require('./petrol-type')
 const petrol = require('./petrol')
 
 //Petrol
@@ -86,5 +87,11 @@ router.delete('/petrol-merge-job/details/id', petrol_merge_job.removePetrolMerge
 router.delete('/petrol-merge-job/details/dpo', petrol_merge_job.removePetrolMergeJobDetailsByDpo);
 router.patch('/petrol-merge-job/information', petrol_merge_job.setPetrolMergeJobInformation);
 router.put('/petrol-merge-job/information', petrol_merge_job.addPetrolMergeJobInformation);
+
+// ============= Petrol type =============
+router.post('/type/information', petrol_type.getPetrolTypeInformation);
+router.put('/type/information', petrol_type.addPetrolType);
+router.patch('/type/information', petrol_type.setPetrolType);
+router.delete('/type/remove', petrol_type.removePetrolType);
 
 module.exports = router;

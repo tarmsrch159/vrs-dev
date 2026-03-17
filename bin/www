@@ -21,7 +21,7 @@ console.log("API is start on port :", port);
 
 setTimeout(async () => {
     //debugger
-    console.log(config.connectionString(process.env.dbdatabase));
+    // console.log(config.connectionString(process.env.dbdatabase));
     await pgConn.link(config.connectionString(process.env.dbdatabase));
 
     let script = `select 1=1;`;
