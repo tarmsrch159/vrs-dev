@@ -346,6 +346,7 @@ exports.getOrderInformationByID = async (req, res, next) => {
         let itemScript = `SELECT 
             tbl_order_item.id, tbl_order_item.order_no, tbl_order_item.item_no,
             tbl_petrol_tank.tnk_number as tank_number,
+            tbl_petrol_tank.tnk_capacity as tank_capacity,
             tbl_order_item.item_qty, tbl_order_item.deli_plant, 
             tbl_order_item.long_text_id, tbl_order_item.long_text,
             tbl_order_item.sales_order_item, tbl_order_item.auto_order,
