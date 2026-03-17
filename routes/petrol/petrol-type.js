@@ -28,14 +28,14 @@ exports.getPetrolTypeInformation = async (req, res, next) => {
 
             let script = ``;
             if (ptrl_type_code.toString().toUpperCase() != 'ALL') {
-                script = `select tbl_order_type.ord_type_code, tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
+                script = `select tbl_order_type.ord_type_code as ptrl_type_code, tbl_order_type.sales_order_type as ptrl_type, tbl_order_type.ord_type_desc as ptrl_type_desc, tbl_order_type.ord_type_flag as ptrl_type_flag, tbl_order_type.ist_dt, 
                 tbl_order_type.mdf_dt, tbl_order_type.rm_dt 
 
                 from tbl_order_type
                 where tbl_order_type.ord_type_code = '${ptrl_type_code}' and tbl_order_type.ord_type_flag = '1'`;
             }
             else {
-                script = `select tbl_order_type.ord_type_code, tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
+                script = `select tbl_order_type.ord_type_code as ptrl_type_code,tbl_order_type.sales_order_type as ptrl_type, tbl_order_type.ord_type_desc as ptrl_type_desc, tbl_order_type.ord_type_flag as ptrl_type_flag, tbl_order_type.ist_dt, 
                 tbl_order_type.mdf_dt, tbl_order_type.rm_dt 
 
                 from tbl_order_type

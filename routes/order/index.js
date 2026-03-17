@@ -14,6 +14,7 @@ const order_calculate = require('./order-calculate');
 
 // ============= Order =============
 router.post('/information', order.getOrderInformation);
+router.post('/order-id/information', order.getOrderInformationByID);
 router.post('/report/information', order.getOrderReportInformation);
 router.post('/runout/information', order.getOrderRunout);
 router.post('/auto-email/information', order.getOrderReport);
