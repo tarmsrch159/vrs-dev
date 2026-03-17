@@ -1156,7 +1156,7 @@ exports.getConfirmOrder = async (req, res, next) => {
             maxBodyLength: Infinity,
             url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI001/SOCreation',
             headers: {
-                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                'APIKey': '',
                 'Content-Type': 'application/json'
             },
             data: payloadData
@@ -1354,7 +1354,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
             maxBodyLength: Infinity,
             url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI024/SODetail',
             headers: {
-                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                'APIKey': '',
                 'Content-Type': 'application/json'
             },
             data: payloadData
@@ -1378,7 +1378,29 @@ exports.getOrderInformationHana = async (req, res, next) => {
                 if (!check_order.code) {
                     if (check_order.data.length > 0) {
                         console.log("เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
-                        let update_script_order = `UPDATE tbl_order SET order_no = '${salesOrder.SalesOrder}', mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
+                        let update_script_order = `UPDATE tbl_order SET 
+                            order_no = '${salesOrder.SalesOrder || ''}',
+                            order_type = '${salesOrder.SalesOrderType || ''}',
+                            order_group = '${salesOrder.SalesOrganization || ''}',
+                            sold_to = '${salesOrder.SoldToParty || ''}',
+                            ship_to = '${salesOrder.ShipToParty || ''}',
+                            cus_ref = '${salesOrder.CustomerReference || ''}',
+                            cus_date_ref = ${salesOrder.CustomerReferenceDate ? `'${salesOrder.CustomerReferenceDate}'` : 'NULL'},
+                            status_deli = '${salesOrder.OverallDeliveryStatus || ''}',
+                            status_block = '${salesOrder.TotalBlockStatus || ''}',
+                            status_sd_process = '${salesOrder.OverallSDProcessStatus || ''}',
+                            status_check = '${salesOrder.TotalCreditCheckStatus || ''}',
+                            sd_doc_reject = '${salesOrder.OverallSDDocumentRejectionSts || ''}',
+                            cus_group = '${salesOrder.CustomerGroup1 || ''}',
+                            hana_created = ${salesOrder.CreationDate ? `'${salesOrder.CreationDate}'` : 'NULL'},
+                            hana_time = '${salesOrder.CreationTime || ''}',
+                            created_by = '${salesOrder.CreatedByUser || ''}',
+                            deli_date_req = ${salesOrder.RequestedDeliveryDate ? `'${salesOrder.RequestedDeliveryDate}'` : 'NULL'},
+                            deli_time_req = ${salesOrder.DeliveryTime ? `'${salesOrder.DeliveryTime}'` : 'NULL'},
+                            description = '${salesOrder.Description || ''}',
+                            order_status = 1,
+                            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+                            WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
                         await pgConn.execute(dbPrefix + lic_code, update_script_order, config.connectionString());
                     }
                 } else {
@@ -1494,7 +1516,7 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             maxBodyLength: Infinity,
             url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI022/SOUpdate',
             headers: {
-                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                'APIKey': '',
                 'Content-Type': 'application/json'
             },
             data: payloadData
