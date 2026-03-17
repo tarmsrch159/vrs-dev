@@ -28,14 +28,14 @@ exports.getOrderTypeInformation = async (req, res, next) => {
 
             let script = ``;
             if (ord_type_code.toString().toUpperCase() != 'ALL') {
-                script = `select tbl_order_type.ord_type_code, tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
+                script = `select tbl_order_type.ord_type_code,tbl_order_type.sales_order_type, tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
                 tbl_order_type.mdf_dt, tbl_order_type.rm_dt 
 
                 from tbl_order_type
                 where tbl_order_type.ord_type_code = '${ord_type_code}' and tbl_order_type.ord_type_flag = '1'`;
             }
             else {
-                script = `select tbl_order_type.ord_type_code, tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
+                script = `select tbl_order_type.ord_type_code, tbl_order_type.sales_order_type, tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
                 tbl_order_type.mdf_dt, tbl_order_type.rm_dt 
 
                 from tbl_order_type
