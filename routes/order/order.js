@@ -60,6 +60,265 @@ exports.getOrderInformation = async (req, res, next) => {
                 tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
                 tbl_order_type.ord_type_desc,
                 tbl_petrol_group.ptrl_group_desc,
+                tbl_order.order_status,
+                tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
+                tbl_petrol.ptrl_desc as station,
+                tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
+                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_master_time.time_value as RequestTime, 
+                tbl_order.description,  tbl_order.sh_cus_date_ref, 
+                tbl_order.status_deli, tbl_order.status_block, tbl_order.status_sd_process, 
+                tbl_order.status_check, tbl_order.sd_doc_reject, tbl_order.cus_group, 
+                tbl_order.hana_created, tbl_order.hana_time, tbl_order.created_by, 
+                tbl_order.ist_dt, tbl_order.mdf_dt, tbl_order.rm_dt,
+                tbl_order.auto_order,
+                COALESCE(tbl_sum_item.total_qty, 0) as total_item_qty
+                from tbl_order  
+                left join tbl_order_type on tbl_order.order_type = tbl_order_type.ord_type_code
+                left join tbl_petrol_group on tbl_petrol_group.ptrl_group_code = tbl_order.order_group
+                left join tbl_petrol on tbl_order.ship_to = tbl_petrol.ptrl_number
+                left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
+                left join (
+                    SELECT order_no, SUM(item_qty::numeric) as total_qty 
+                    FROM tbl_order_item 
+                    WHERE rm_dt IS NULL 
+                    GROUP BY order_no
+                ) tbl_sum_item on tbl_order.id::text = tbl_sum_item.order_no
+                where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' `;
+            }
+            else {
+                script = `select 
+                tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
+                tbl_order_type.ord_type_desc,
+                tbl_petrol_group.ptrl_group_desc,
+                tbl_order.order_status,
+                tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
+                tbl_petrol.ptrl_desc as station,
+                tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
+                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_master_time.time_value as RequestTime , 
+                tbl_order.description,  tbl_order.sh_cus_date_ref, 
+                tbl_order.status_deli, tbl_order.status_block, tbl_order.status_sd_process, 
+                tbl_order.status_check, tbl_order.sd_doc_reject, tbl_order.cus_group, 
+                tbl_order.hana_created, tbl_order.hana_time, tbl_order.created_by, 
+                tbl_order.ist_dt, tbl_order.mdf_dt, tbl_order.rm_dt,
+                tbl_order.auto_order,
+                COALESCE(tbl_sum_item.total_qty, 0) as total_item_qty
+                from tbl_order  
+                left join tbl_order_type on tbl_order.order_type = tbl_order_type.ord_type_code
+                left join tbl_petrol_group on tbl_petrol_group.ptrl_group_code = tbl_order.order_group
+                left join tbl_petrol on tbl_order.ship_to = tbl_petrol.ptrl_number
+                left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
+                left join (
+                    SELECT order_no, SUM(item_qty::numeric) as total_qty 
+                    FROM tbl_order_item 
+                    WHERE rm_dt IS NULL 
+                    GROUP BY order_no
+                ) tbl_sum_item on tbl_order.id::text = tbl_sum_item.order_no
+                where tbl_order.rm_dt IS NULL`;
+            }
+
+            // ========== ต่อ Query String ==========
+            if (status_deli.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.status_deli = '${status_deli}' `
+            }
+
+            if (order_type.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.order_type = '${order_type}' `
+            }
+
+            if (auto_order.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.auto_order = '${auto_order}' `
+            }
+
+            if (order_status.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.order_status = '${order_status}' `
+            }
+
+            if (status_deli.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.status_deli = '${status_deli}' `
+            }
+
+            if (search != '') {
+                script += ` and (tbl_order.order_no like '%${search}%' 
+                or tbl_order.sold_to like '%${search}%' 
+                or tbl_order.ship_to like '%${search}%' 
+                or tbl_order.po_name like '%${search}%' 
+                or tbl_order.description like '%${search}%')`
+            }
+
+            if (start_date.toString().toUpperCase() != 'ALL' && end_date.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.ist_dt >= '${start_date}' and tbl_order.ist_dt <= '${end_date}'`
+            }
+
+            // ========== ต่อท้าย Query String ==========
+            script += ` order by tbl_order.ist_dt desc `
+            script += ` offset (${page_index}*${page_limit}) limit ${page_limit};`
+
+            // ========== Query ข้อมูลหลัก ==========
+            let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+            if (!tbl_temporary.code) {
+                //debugger
+                if (tbl_temporary.data.length > 0) {
+                    tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+
+                    // ========== Query จำนวนแถวทั้งหมด ==========
+                    let page_total = 0;
+                    let rows_total = 0;
+                    script = ``
+                    if (order_no.toString().toUpperCase() != 'ALL') {
+                        script = `
+                        select ceil((ceil(sum(rows_total)) / ${page_limit})) as page_total, sum(rows_total) as rows_total  
+                        from (select 1 as rows_total from tbl_order 
+                        where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' `;
+                    }
+                    else {
+                        script = `
+                        select ceil((ceil(sum(rows_total)) / ${page_limit})) as page_total, sum(rows_total) as rows_total  
+                        from (select 1 as rows_total from tbl_order 
+                        where tbl_order.rm_dt IS NULL `;
+                    }
+
+                    if (order_status.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.order_status = '${order_status}' `
+                    }
+
+                    if (status_deli.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.status_deli = '${status_deli}' `
+                    }
+
+                    if (order_type.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.order_type = '${order_type}' `
+                    }
+                    if (auto_order.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.auto_order = '${auto_order}' `
+                    }
+                    if (search != '') {
+                        script += ` and (tbl_order.order_no like '%${search}%' 
+                    or tbl_order.sold_to like '%${search}%' 
+                    or tbl_order.ship_to like '%${search}%' 
+                    or tbl_order.po_name like '%${search}%' 
+                    or tbl_order.description like '%${search}%')`
+                    }
+                    if (start_date.toString().toUpperCase() != 'ALL' && end_date.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.ist_dt >= '${start_date}' and tbl_order.ist_dt <= '${end_date}'`
+                    }
+
+                    script += `) xtbl_master `
+
+                    // ========== Query จำนวนแถวทั้งหมด ==========
+                    let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+
+                    if (!tbl_temporary0.code) {
+                        if (tbl_temporary0.data.length > 0) {
+                            page_total = parseInt(tbl_temporary0.data[0].page_total);
+                            rows_total = parseInt(tbl_temporary0.data[0].rows_total);
+                        }
+                    }
+
+                    // ========== Return Success Response ==========
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: tbl_temporary.data,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                        page_total: (page_total <= 0 ? 1 : page_total),
+                        rows_total: rows_total
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                } else {
+                    // ========== Return Empty Data Response ==========
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: xresult,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                }
+            } else {
+
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                    data: xresult,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }]
+                res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                return;
+            }
+        }
+    })().catch(async (err) => {
+        // ========== Catch Block ==========
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: xresult,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+    });
+}
+
+exports.getOrderReportInformation = async (req, res, next) => {
+
+    var xresult = [];
+
+    return (async () => {
+
+        let lic_code = req.header('lic_code');
+        let { order_no, start_date, end_date, order_type, order_status, auto_order, status_deli,
+            search, page_index, page_limit, action } = req.body[0];
+        page_index == undefined ? page_index = 1 : page_index;
+        page_limit == undefined ? page_limit = 10 : page_limit;
+        auto_order = auto_order == undefined ? 'ALL' : auto_order;
+        status_deli = status_deli == undefined ? 'ALL' : status_deli;
+
+        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
+        if (start_date == undefined || end_date == undefined
+            || order_type == undefined || order_status == undefined
+            || search == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+        } else {
+
+            // ========== เตรียมข้อมูลสำหรับ Query และ Format Dates ==========
+            let script = ``;
+            if (page_index > 0) {
+                page_index -= 1;
+            }
+
+            if (start_date.length == 10) {
+                start_date = start_date + ' 00:00:00'
+            }
+
+            if (end_date.length == 10) {
+                end_date = end_date + ' 23:59:59'
+            }
+
+            // ========== Script Query ข้อมูลหลัก ==========
+            if (order_no.toString().toUpperCase() != 'ALL') {
+                script = `select 
+                tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
+                tbl_order_type.ord_type_desc,
+                tbl_petrol_group.ptrl_group_desc,
+                tbl_order.order_status,
                 tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
                 tbl_petrol.ptrl_desc as station,
                 tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
@@ -99,6 +358,7 @@ exports.getOrderInformation = async (req, res, next) => {
                 tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
                 tbl_order_type.ord_type_desc,
                 tbl_petrol_group.ptrl_group_desc,
+                tbl_order.order_status,
                 tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
                 tbl_petrol.ptrl_desc as station,
                 tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
@@ -1102,7 +1362,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
 
         try {
             let apiResponse = await axios.request(axiosConfig);
-
+            // console.log(apiResponse.data.Response.SalesOrders)
             let response = [{
                 status: 'success',
                 invalid_code: '0',
@@ -1111,8 +1371,20 @@ exports.getOrderInformationHana = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
-
-            let check_script_order = `SELECT * FROM tbl_order WHERE order_no IN (${SalesOrderList.join(',')})`;
+            for (let i = 0; i < apiResponse.data.Response.SalesOrders.length; i++) {
+                let salesOrder = apiResponse.data.Response.SalesOrders[i];
+                let check_script_order = `SELECT * FROM tbl_order WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
+                let check_order = await pgConn.get(dbPrefix + lic_code, check_script_order, config.connectionString());
+                if (!check_order.code) {
+                    if (check_order.data.length > 0) {
+                        console.log("เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
+                        let update_script_order = `UPDATE tbl_order SET order_no = '${salesOrder.SalesOrder}', mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
+                        await pgConn.execute(dbPrefix + lic_code, update_script_order, config.connectionString());
+                    }
+                } else {
+                    console.log("ไม่เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
+                }
+            }
 
 
         } catch (error) {
@@ -1943,12 +2215,12 @@ exports.removeOrderInformationById = async (req, res, next) => {
             return;
         } else {
 
-            // ดัก petrol_merge_job_id เป็น array
+            // ดัก id เป็น array
             let order_noArr = Array.isArray(order_no) ? order_no : [order_no];
             let order_noIn = order_noArr.map(c => `'${c}'`).join(', ');
 
             // ================= เช็ค Validate Status Deli และ Flag =================
-            let scriptCheckStatus = `SELECT order_no, status_deli, order_flag FROM tbl_order WHERE order_no IN(${order_noIn})`;
+            let scriptCheckStatus = `SELECT id, order_no, status_deli, order_flag FROM tbl_order WHERE id IN (${order_noIn})`;
             let status_deli_res = await pgConn.get(dbPrefix + lic_code, scriptCheckStatus, config.connectionString());
 
             if (status_deli_res.code || status_deli_res.data.length === 0) {
@@ -1973,7 +2245,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
                     invalid_code: '-2',
                     message: 'ไม่สามารถลบข้อมูลเนื่องจากออเดอร์นี้ปิดใช้งานไปแล้ว',
                     data: [],
-                    closed_orders: closedOrders.map(o => o.order_no),
+                    closed_orders: closedOrders.map(o => (o.order_no || o.id)),
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }];
                 res.status(200).send(response);
@@ -1982,45 +2254,45 @@ exports.removeOrderInformationById = async (req, res, next) => {
                 return;
             }
 
-            let validOrders = [];
-            let skippedOrders = [];
+            let validIds = [];
+            let skippedIds = [];
 
             status_deli_res.data.forEach(order => {
                 if (order.status_deli === 'A') {
-                    validOrders.push(order.order_no);
+                    validIds.push(order.id);
                 } else {
-                    skippedOrders.push(order.order_no);
+                    skippedIds.push(order.id);
                 }
             });
 
             // ถ้าไม่มีออเดอร์สถานะ A เลยสักตัวเดียว ให้ตีกลับ Error
-            if (validOrders.length === 0) {
+            if (validIds.length === 0) {
                 let response = [{
                     status: 'error',
                     invalid_code: '-1',
                     message: 'ไม่สามารถยกเลิก/ลบออเดอร์ได้ เนื่องจากไม่มีออเดอร์ใดที่มี Status Delivery เป็น A',
                     data: [],
-                    skipped_orders: skippedOrders, // แนบไปบอกหน้าบ้านว่าตัวไหนโดนข้ามบ้าง
+                    skipped_ids: skippedIds, // แนบไปบอกหน้าบ้านว่าตัวไหนโดนข้ามบ้าง
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }];
                 res.status(200).send(response);
-                let logPayloadObj = { order_no: order_no, ...req.body[0] };
+                let logPayloadObj = { id: id, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูล Order', JSON.stringify(logPayloadObj), 'ไม่สามารถยกเลิก/ลบออเดอร์ได้ เนื่องจากไม่มีออเดอร์ใดที่มี Status Delivery เป็น A', action[0].value);
                 return;
             }
             // ================= จบการเช็ค Status Deli =================
-            let validOrderNoIn = validOrders.map(c => `'${c}'`).join(', ');
+            let validIdIn = validIds.map(c => `'${c}'`).join(', ');
 
-            let script = `update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}' 
-            where order_no in (${validOrderNoIn}); `
+            let script = `update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+            where id in (${validIdIn});`
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
 
-                let successMessage = skippedOrders.length > 0
-                    ? `ลบข้อมูล Order สำเร็จ ${validOrders.length} รายการ(ข้าม Order ที่สถานะไม่ใช่ A จำนวน ${skippedOrders.length} รายการ)`
+                let successMessage = skippedIds.length > 0
+                    ? `ลบข้อมูล Order สำเร็จ ${validIds.length} รายการ (ข้าม Order ที่สถานะไม่ใช่ A จำนวน ${skippedIds.length} รายการ)`
                     : 'ลบข้อมูล Order ได้สำเร็จทั้งหมด';
-                //debugger
+
                 let response = [{
                     status: 'success',
                     invalid_code: '0',
@@ -2031,7 +2303,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
 
                 res.status(200).send(response);
                 let event_type = req.body[0].event_type || 'cancel_aos';
-                let logPayload = { order_no: order_no, ...req.body[0] };
+                let logPayload = { id: id, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'success', action[0].value);
                 return;
             } else {
@@ -2044,7 +2316,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
                 }]
                 res.status(200).send(response);
                 let event_type = req.body[0].event_type || 'cancel_aos';
-                let logPayload = { order_no: order_no, ...req.body[0] };
+                let logPayload = { id: id, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
                 return;
             }
@@ -2061,7 +2333,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
         }]
         res.status(200).send(response);
         let event_type = req.body[0].event_type || 'cancel';
-        let logPayload = { order_no: (req.body[0].order_no || ""), ...req.body[0] };
+        let logPayload = { id: (req.body[0].id || ""), ...req.body[0] };
         await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
         return;
     });
