@@ -1047,7 +1047,7 @@ exports.getConfirmOrder = async (req, res, next) => {
 
 };
 
-// =========== ดึงรายการสั่งซื้อจาก Hana ===========
+// =========== ดึงรายการสั่งซื้อจาก Hana เพื่ออัพเดตลง Database ===========
 exports.getOrderInformationHana = async (req, res, next) => {
 
     return (async () => {
@@ -1111,6 +1111,8 @@ exports.getOrderInformationHana = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
+
+            let check_script_order = `SELECT * FROM tbl_order WHERE order_no IN (${SalesOrderList.join(',')})`;
 
 
         } catch (error) {
