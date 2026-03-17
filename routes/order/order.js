@@ -1102,7 +1102,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
 
         try {
             let apiResponse = await axios.request(axiosConfig);
-            console.log(apiResponse.data.Response.SalesOrders)
+
             let response = [{
                 status: 'success',
                 invalid_code: '0',
