@@ -1172,10 +1172,11 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
 
             return {
                 "SalesOrderItem": item.SalesOrderItem,
-                // หากค่า item เดิมที่ถูกส่งมามี key/value อื่นๆ อยู่แล้ว จะถูกดึงมารวมใน Object นี้ด้วย
-                ...(typeof item === 'object' ? item : {})
+                "SalesDocumentRjcnReason": "85"
             };
         });
+
+        console.log(sapItems)
 
         let payloadData = JSON.stringify({
             "SalesDocuments": [
