@@ -12,7 +12,7 @@ const order_sync_non_vmi = require('./order-sync-non-vmi');
 const order_sync_vmi = require('./order-sync-vmi');
 const order_calculate = require('./order-calculate');
 
-//order
+// ============= Order =============
 router.post('/information', order.getOrderInformation);
 router.post('/runout/information', order.getOrderRunout);
 router.post('/report/information', order.getOrderReport);
@@ -22,8 +22,15 @@ router.patch('/information', order.setOrderInformation);
 router.patch('/status-deli/information', order.setStatusDeli);
 router.delete('/information/remove', order.removeOrderInformationById);
 
-//Order - SAP
+// ============= Order - SAP =============
 router.post('/confirm/information', order.getConfirmOrder);
 router.post('/order-hana/information', order.getOrderInformationHana);
 router.post('/cancel-hana/information', order.cancelOrderInformationHana);
+
+// ============= Order type =============
+router.post('/type/information', order_type.getOrderTypeInformation);
+router.put('/type/information', order_type.addOrderType);
+router.patch('/type/information', order_type.setOrderType);
+router.delete('/type/remove', order_type.removeOrderType);
+
 module.exports = router;

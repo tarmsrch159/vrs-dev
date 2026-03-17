@@ -18,15 +18,16 @@ exports.getOrderInformation = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { order_no, start_date, end_date, order_type, ord_status, auto_order,
+        let { order_no, start_date, end_date, order_type, order_status, auto_order, status_deli,
             search, page_index, page_limit, action } = req.body[0];
         page_index == undefined ? page_index = 1 : page_index;
         page_limit == undefined ? page_limit = 10 : page_limit;
         auto_order = auto_order == undefined ? 'ALL' : auto_order;
+        status_deli = status_deli == undefined ? 'ALL' : status_deli;
 
         // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
-        if (order_no == undefined || start_date == undefined || end_date == undefined
-            || order_type == undefined || ord_status == undefined
+        if (start_date == undefined || end_date == undefined
+            || order_type == undefined || order_status == undefined
             || search == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -142,8 +143,8 @@ exports.getOrderInformation = async (req, res, next) => {
             }
 
             // ========== ต่อ Query String ==========
-            if (ord_status.toString().toUpperCase() != 'ALL') {
-                script += ` and tbl_order.status_deli = '${ord_status}' `
+            if (status_deli.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.status_deli = '${status_deli}' `
             }
 
             if (order_type.toString().toUpperCase() != 'ALL') {
@@ -154,6 +155,13 @@ exports.getOrderInformation = async (req, res, next) => {
                 script += ` and tbl_order.auto_order = '${auto_order}' `
             }
 
+            if (order_status.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.order_status = '${order_status}' `
+            }
+
+            if (status_deli.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.status_deli = '${status_deli}' `
+            }
 
             if (search != '') {
                 script += ` and (tbl_order.order_no like '%${search}%' 
@@ -196,9 +204,14 @@ exports.getOrderInformation = async (req, res, next) => {
                         where tbl_order.rm_dt IS NULL `;
                     }
 
-                    if (ord_status.toString().toUpperCase() != 'ALL') {
-                        script += ` and tbl_order.status_deli = '${ord_status}' `
+                    if (order_status.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.order_status = '${order_status}' `
                     }
+
+                    if (status_deli.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.status_deli = '${status_deli}' `
+                    }
+
                     if (order_type.toString().toUpperCase() != 'ALL') {
                         script += ` and tbl_order.order_type = '${order_type}' `
                     }
@@ -325,7 +338,10 @@ exports.getLoggingOrderInformation = async (req, res, next) => {
                 or tbl_action_logs.action_desc = 'manual' 
                 or tbl_action_logs.action_desc = 'cancel' 
                 or tbl_action_logs.action_desc = 'confirm' 
-                or tbl_action_logs.action_desc = 'approve') `;
+                or tbl_action_logs.action_desc = 'approve'
+                or tbl_action_logs.action_desc = 'confirm_order_sap'
+                or tbl_action_logs.action_desc = 'cancel_order_sap'
+                ) `;
             }
 
             script += ` order by tbl_action_logs.ist_dt desc `
@@ -898,7 +914,7 @@ exports.getConfirmOrder = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_sap', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
 
             // =========== เชื่อมต่อ SAP Data ลงฐานข้อมูล ===========
             let sap_response = api_response.data;
@@ -1216,7 +1232,7 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูล Order จาก SAP', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_sap', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
             return;
 
         } catch (error) {
@@ -1231,7 +1247,7 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             }];
             res.status(200).send(response);
 
-            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_no }), errMsg, action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_error', JSON.stringify({ order_no }), errMsg, action[0].value);
             return;
         }
 
@@ -1472,14 +1488,14 @@ exports.addOrderInformation = async (req, res, next) => {
             (order_no, order_type, order_group, chanel, division, sold_to, ship_to, 
             cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term, 
             deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref, 
-            status_deli, ist_dt, order_flag, auto_order) 
+            status_deli, ist_dt, order_flag, auto_order, order_status) 
             VALUES 
             (NULL, '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}', 
             '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
             'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}', 
             ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}', 
             '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, 
-            '0', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0') RETURNING id`;
+            'A', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '0') RETURNING id`;
 
         script = script.replace(/'NULL'/gi, "NULL");
         let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
@@ -2006,7 +2022,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
                 }]
 
                 res.status(200).send(response);
-                let event_type = req.body[0].event_type || 'cancel';
+                let event_type = req.body[0].event_type || 'cancel_aos';
                 let logPayload = { order_no: order_no, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'success', action[0].value);
                 return;
@@ -2019,7 +2035,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
                 res.status(200).send(response);
-                let event_type = req.body[0].event_type || 'cancel';
+                let event_type = req.body[0].event_type || 'cancel_aos';
                 let logPayload = { order_no: order_no, ...req.body[0] };
                 await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
                 return;
