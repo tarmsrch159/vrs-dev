@@ -1801,6 +1801,14 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
                 let status = false;
                 if (apiResponse.data.SalesDocuments[0].MessageType === 'S') {
                     status = true;
+
+                    let script_update_order = `
+                        UPDATE tbl_order 
+                        SET order_status = '2', 
+                            mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
+                        WHERE order_no = '${order_no}'
+                    `;
+                    await pgConn.execute(dbPrefix + lic_code, script_update_order, config.connectionString());
                 }
 
                 let response = [{
