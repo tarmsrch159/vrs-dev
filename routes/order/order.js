@@ -55,8 +55,7 @@ exports.getOrderInformation = async (req, res, next) => {
             }
 
             // ========== Script Query ข้อมูลหลัก ==========
-            if (order_no.toString().toUpperCase() != 'ALL') {
-                script = `select 
+            script = `select 
                 tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
                 tbl_order_type.ord_type_desc,
                 tbl_petrol_group.ptrl_group_desc,
@@ -78,45 +77,20 @@ exports.getOrderInformation = async (req, res, next) => {
                 left join tbl_petrol on tbl_order.ship_to = tbl_petrol.ptrl_number
                 left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
                 left join (
-                    SELECT order_no, SUM(item_qty::numeric) as total_qty 
+                    SELECT 
+                        TRIM(CAST(order_no AS TEXT)) as order_no_text, 
+                        SUM(NULLIF(TRIM(CAST(item_qty AS TEXT)), '')::numeric) as total_qty 
                     FROM tbl_order_item 
                     WHERE rm_dt IS NULL 
-                    GROUP BY order_no
-                ) tbl_sum_item on tbl_order.id = tbl_sum_item.order_no
-                where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' `;
-            }
-            else {
-                script = `select 
-                tbl_order.id, tbl_order.order_no,tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
-                tbl_order_type.ord_type_desc,
-                tbl_petrol_group.ptrl_group_desc,
-                tbl_order.order_status,
-                tbl_order.chanel, tbl_order.division, tbl_order.sold_to, tbl_order.ship_to, 
-                tbl_petrol.ptrl_desc as station,
-                tbl_order.cus_ref, tbl_order.cus_date_ref, tbl_order.po_name, tbl_order.order_by, 
-                tbl_order.ship_cond, tbl_order.pay_term, tbl_order.deli_date_req as request_date, tbl_master_time.time_value as RequestTime , 
-                tbl_order.description,  tbl_order.sh_cus_date_ref, 
-                tbl_order.status_deli, tbl_order.status_block, tbl_order.status_sd_process, 
-                tbl_order.status_check, tbl_order.sd_doc_reject, tbl_order.cus_group, 
-                tbl_order.hana_created, tbl_order.hana_time, tbl_order.created_by, 
-                tbl_order.ist_dt, tbl_order.mdf_dt, tbl_order.rm_dt,
-                tbl_order.auto_order,
-                COALESCE(tbl_sum_item.total_qty, 0) as total_item_qty
-                from tbl_order  
-                left join tbl_order_type on tbl_order.order_type = tbl_order_type.ord_type_code
-                left join tbl_petrol_group on tbl_petrol_group.ptrl_group_code = tbl_order.order_group
-                left join tbl_petrol on tbl_order.ship_to = tbl_petrol.ptrl_number
-                left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
-                left join (
-                    SELECT CAST(order_no AS TEXT) as order_no_text, SUM(item_qty::numeric) as total_qty 
-                    FROM tbl_order_item 
-                    WHERE rm_dt IS NULL 
-                    GROUP BY CAST(order_no AS TEXT)
-                ) tbl_sum_item on CAST(tbl_order.id AS TEXT) = tbl_sum_item.order_no_text
-                where tbl_order.rm_dt IS NULL`;
-            }
+                    GROUP BY TRIM(CAST(order_no AS TEXT))
+                ) tbl_sum_item on TRIM(CAST(tbl_order.id AS TEXT)) = tbl_sum_item.order_no_text
+                where tbl_order.rm_dt IS NULL `;
 
             // ========== ต่อ Query String ==========
+            if (order_no.toString().toUpperCase() != 'ALL') {
+                script += ` and tbl_order.order_no = '${order_no}' `
+            }
+
             if (status_deli.toString().toUpperCase() != 'ALL') {
                 script += ` and tbl_order.status_deli = '${status_deli}' `
             }
@@ -133,18 +107,14 @@ exports.getOrderInformation = async (req, res, next) => {
                 script += ` and tbl_order.order_status = '${order_status}' `
             }
 
-            if (status_deli.toString().toUpperCase() != 'ALL') {
-                script += ` and tbl_order.status_deli = '${status_deli}' `
-            }
-
             if (action[0].value.toString().toUpperCase() != 'ALL') {
                 script += ` and tbl_order.created_by_tms = '${action[0].id}' `
             }
 
             if (search != '') {
                 script += ` and (tbl_order.order_no like '%${search}%' 
-                or tbl_order.sold_to like '%${search}%' 
-                or tbl_order.ship_to like '%${search}%' 
+                or tbl_order.sh_cus_ref like '%${search}%' 
+                or tbl_order.cus_ref like '%${search}%' 
                 or tbl_order.po_name like '%${search}%' 
                 or tbl_order.description like '%${search}%')`
             }
@@ -196,13 +166,19 @@ exports.getOrderInformation = async (req, res, next) => {
                     if (auto_order.toString().toUpperCase() != 'ALL') {
                         script += ` and tbl_order.auto_order = '${auto_order}' `
                     }
+
+                    if (action[0].value.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_order.created_by_tms = '${action[0].id}' `
+                    }
+
                     if (search != '') {
                         script += ` and (tbl_order.order_no like '%${search}%' 
-                    or tbl_order.sold_to like '%${search}%' 
-                    or tbl_order.ship_to like '%${search}%' 
-                    or tbl_order.po_name like '%${search}%' 
-                    or tbl_order.description like '%${search}%')`
+                or tbl_order.sh_cus_ref like '%${search}%' 
+                or tbl_order.cus_ref like '%${search}%' 
+                or tbl_order.po_name like '%${search}%' 
+                or tbl_order.description like '%${search}%')`
                     }
+
                     if (start_date.toString().toUpperCase() != 'ALL' && end_date.toString().toUpperCase() != 'ALL') {
                         script += ` and tbl_order.ist_dt >= '${start_date}' and tbl_order.ist_dt <= '${end_date}'`
                     }
