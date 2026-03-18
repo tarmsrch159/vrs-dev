@@ -1685,11 +1685,15 @@ exports.getOrderInformationHana = async (req, res, next) => {
             res.status(200).send(response);
             for (let i = 0; i < apiResponse.data.Response.SalesOrders.length; i++) {
                 let salesOrder = apiResponse.data.Response.SalesOrders[i];
+
+                console.log(`[Item ${i + 1}/${apiResponse.data.Response.SalesOrders.length}] 📦 ประมวลผล SHCustomerReference: ${salesOrder.SHCustomerReference}`);
+
                 // =========== เช็ค SHCustomerReference ว่ามีใน tbl_order หรือไม่ ==================
                 let check_script_order = `SELECT * FROM tbl_order WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
                 let check_order = await pgConn.get(dbPrefix + lic_code, check_script_order, config.connectionString());
                 if (!check_order.code) {
                     if (check_order.data.length > 0) {
+                        console.log(`   ➡️  เจอออเดอร์ในระบบ (Update Mode)`);
                         console.log("เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
 
                         // ================ เช็ค ship_to ว่ามีใน tbl_petrol ==================
@@ -1698,10 +1702,12 @@ exports.getOrderInformationHana = async (req, res, next) => {
                             let check_script_ship_to = `SELECT ptrl_number FROM tbl_petrol WHERE ptrl_number = '${salesOrder.ShipToParty}' LIMIT 1`;
                             let check_ship_to = await pgConn.get(dbPrefix + lic_code, check_script_ship_to, config.connectionString());
                             if (check_ship_to.code || check_ship_to.data.length === 0) {
-                                console.log("ไม่เจอ ship_to (tbl_petrol) : " + salesOrder.ShipToParty);
+
+                                console.log(`   ⚠️  ข้อมูลไม่สมบูรณ์: ไม่พบรหัสปั๊ม ShipToParty [${salesOrder.ShipToParty}] ใน tbl_petrol`);
                                 isOrderComplete = false;
                             }
                         } else {
+                            console.log(`   ⚠️  ข้อมูลไม่สมบูรณ์: ไม่มีรหัสปั๊ม ShipToParty`);
                             isOrderComplete = false;
                         }
 
@@ -1713,11 +1719,12 @@ exports.getOrderInformationHana = async (req, res, next) => {
                                     let check_script_material = `SELECT itm_code FROM tbl_item WHERE itm_material_number = '${item.Material}' LIMIT 1`;
                                     let check_material = await pgConn.get(dbPrefix + lic_code, check_script_material, config.connectionString());
                                     if (check_material.code || check_material.data.length === 0) {
-                                        console.log("ไม่เจอ Material (tbl_item) : " + item.Material);
+                                        console.log(`   ⚠️  ข้อมูลไม่สมบูรณ์: ไม่พบสินค้ารหัส Material [${item.Material}] ใน tbl_item`);
                                         isOrderComplete = false;
                                         break;
                                     }
                                 } else {
+                                    console.log(`   ⚠️  ข้อมูลไม่สมบูรณ์: ไม่มีรหัสสินค้า Material`);
                                     isOrderComplete = false;
                                     break;
                                 }
@@ -1726,7 +1733,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
 
                         // ================ ถ้า Order ไม่สมบูรณ์ → set status 9 แล้วข้ามไปอันถัดไป ==================
                         if (!isOrderComplete) {
-                            console.log(`Order ${salesOrder.SHCustomerReference} ไม่สมบูรณ์ (ship_to หรือ material ไม่ตรงกับในระบบ) → order_status = 9`);
+                            console.log(`   ❌  อัปเดตสถานะออเดอร์เป็น 9 (ข้อมูลมาสเตอร์ไม่ครบ) แล้วข้ามรายการนี้`);
                             let update_incomplete = `UPDATE tbl_order SET 
                                 order_no = '${salesOrder.SalesOrder || ''}',
                                 order_status = 9,
@@ -1737,6 +1744,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
                         }
 
                         // ================ Order สมบูรณ์ → อัพเดตทุกฟิลด์ ==================
+                        console.log(`   ✅  ข้อมูลสมบูรณ์ กำลังอัปเดต tbl_order และ tbl_order_item...`);
                         let update_script_order = `UPDATE tbl_order SET 
                             order_no = '${salesOrder.SalesOrder || ''}',
                             order_type = '${salesOrder.SalesOrderType || ''}',
@@ -1781,10 +1789,13 @@ exports.getOrderInformationHana = async (req, res, next) => {
                                 await pgConn.execute(dbPrefix + lic_code, update_item_script, config.connectionString());
                             }
                         }
+                        console.log(`   ✅  อัปเดตสำเร็จ`);
+                        console.log(`------------------------------------------------------`);
                     } else {
                         // ================ กรณีไม่เจอ Order ในระบบ → เพื่ม Order ใหม่จาก SAP ==================
                         console.log("ไม่เจอ SHCustomerReference ในระบบ → กำลังสร้าง Order ใหม่: " + salesOrder.SHCustomerReference);
-
+                        console.log(`   ➡️  ไม่เจอออเดอร์ในระบบ (Insert Mode)`);
+                        console.log(`   ➕  กำลังสร้าง Order ใหม่จากข้อมูล SAP...`);
                         let insert_order_script = `INSERT INTO tbl_order
                             (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
                                 cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
