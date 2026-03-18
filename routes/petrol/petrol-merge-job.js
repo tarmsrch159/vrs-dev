@@ -359,6 +359,166 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
 
 }
 
+exports.getPetrolMergeJobDetailsV2 = async (req, res, next) => {
+    var xresult = [];
+
+    return (async () => {
+
+        let lic_code = req.header('lic_code');
+        let { ptrl_code, action, page_index, page_limit } = req.body[0];
+
+        const page = parseInt(page_index) || 1;
+        const limit = parseInt(page_limit) || 10;
+        const offset = (page > 0 ? page - 1 : 0) * limit;
+
+        // เช็คเฉพาะส่วนที่สำคัญ
+        if (ptrl_code === undefined || lic_code === undefined || action === undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            return;
+        }
+
+        // =========================================================
+        // 1. จัดการเงื่อนไข WHERE แบบรวมศูนย์ (Dynamic Conditions)
+        // =========================================================
+        let conditions = [
+            "tbl_petrol_merge_job_info.flag = '1'",
+            "tbl_petrol_merge_job.petrol_merge_job_flag = '1'",
+            "tbl_ptrl.ptrl_flag = '1'"
+        ];
+
+
+
+        if (ptrl_code.toString().toUpperCase() !== 'ALL') {
+            conditions.push(`tbl_petrol_merge_job.ptrl_code = '${ptrl_code}'`);
+        }
+
+        let whereClause = "WHERE " + conditions.join(" AND ");
+
+        let baseJoins = `
+            FROM tbl_petrol_merge_job_info
+            LEFT JOIN tbl_depot ON tbl_petrol_merge_job_info.dpo_code = tbl_depot.dpo_code AND tbl_depot.dpo_flag = '1'
+            LEFT JOIN tbl_item ON tbl_petrol_merge_job_info.itm_code = tbl_item.itm_code AND tbl_item.itm_flag = '1'    
+            LEFT JOIN tbl_petrol_merge_job ON tbl_petrol_merge_job_info.ptrl_merge_job_code = tbl_petrol_merge_job.ptrl_merge_job_code
+            LEFT JOIN tbl_petrol tbl_ptrl ON tbl_petrol_merge_job.ptrl_code = tbl_ptrl.ptrl_code
+            LEFT JOIN tbl_petrol tbl_merge_ptrl ON tbl_petrol_merge_job.ptrl_merge_code = tbl_merge_ptrl.ptrl_code
+        `;
+
+        // =========================================================
+        // 2. Query ดึงข้อมูลหลัก (แบบ Row by Row)
+        // =========================================================
+        let dataScript = `
+            SELECT
+                tbl_petrol_merge_job_info.id,
+                tbl_petrol_merge_job.ptrl_merge_job_code,
+                tbl_petrol_merge_job.ptrl_code,
+                tbl_ptrl.ptrl_number,
+                tbl_ptrl.ptrl_desc,
+                tbl_ptrl.ptrl_short_desc,
+                tbl_petrol_merge_job.ptrl_merge_code,
+                tbl_merge_ptrl.ptrl_number as ptrl_merge_number,
+                tbl_merge_ptrl.ptrl_desc as ptrl_merge_desc,
+                tbl_merge_ptrl.ptrl_short_desc as ptrl_merge_short_desc,
+                tbl_petrol_merge_job_info.itm_code,
+                tbl_item.itm_desc,
+                tbl_petrol_merge_job_info.dpo_code,
+                tbl_depot.dpo_desc,
+                tbl_petrol_merge_job_info.ist_dt,
+                tbl_petrol_merge_job_info.mdf_dt,
+                tbl_petrol_merge_job_info.rm_dt 
+            ${baseJoins}
+            ${whereClause}
+            ORDER BY tbl_merge_ptrl.ptrl_desc ASC
+            LIMIT ${limit} OFFSET ${offset};
+        `;
+
+        let tbl_temporary = await pgConn.get(dbPrefix + lic_code, dataScript, config.connectionString());
+
+        if (!tbl_temporary.code) {
+            if (tbl_temporary.data.length > 0) {
+                // แปลง null เป็น string ว่าง
+                let flatData = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+
+                // =========================================================
+                // 3. Query หาจำนวนแถวทั้งหมด (Count Rows)
+                // =========================================================
+                let countScript = `
+                    SELECT 
+                        CEIL((COUNT(tbl_petrol_merge_job_info.id)::numeric / ${limit})) as page_total, 
+                        COUNT(tbl_petrol_merge_job_info.id) as rows_total
+                    ${baseJoins}
+                    ${whereClause};
+                `;
+
+                let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, countScript, config.connectionString());
+
+                let page_total = 0;
+                let rows_total = 0;
+
+                if (!tbl_temporary0.code && tbl_temporary0.data.length > 0) {
+                    page_total = parseInt(tbl_temporary0.data[0].page_total);
+                    rows_total = parseInt(tbl_temporary0.data[0].rows_total);
+                }
+
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: '',
+                    data: flatData, // คืนค่าข้อมูลแบบ Flat (Row by Row) โดยไม่ Group ซ้อนกัน
+                    rows_total: rows_total,
+                    page_total: (page_total <= 0 ? 1 : page_total),
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
+
+                res.status(200).send(response);
+                return;
+            } else {
+                let response = [{
+                    status: 'success',
+                    invalid_code: '0',
+                    message: 'ไม่พบข้อมูล สินค้า และคลังสินค้า',
+                    data: [],
+                    rows_total: 0,
+                    page_total: 0,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
+                res.status(200).send(response);
+                return;
+            }
+        } else {
+            let response = [{
+                status: 'error',
+                invalid_code: '-3',
+                message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+                data: xresult,
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }];
+            res.status(200).send(response);
+            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลคลังสินค้าปั้ม', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            return;
+        }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: xresult,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }];
+        res.status(200).send(response);
+        await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลคลังสินค้าปั้ม', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+}
+
 
 //Success
 exports.removePetrolMergeJob = async (req, res, next) => {
