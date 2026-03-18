@@ -1293,58 +1293,7 @@ const getConfirmOrder = async (lic_code, order_id, action) => {
         };
 
         try {
-            // let api_response = await axios.request(axiosConfig);
-            let api_response = {
-                "SalesDocuments": [
-                    {
-                        "SalesOrder": "2100000233",
-                        "SHCustomerReference": "AOS202606180003",
-                        "MessageType": "S",
-                        "MessageText": "The sales order has been created but has not yet been completed.",
-                        "Messages": [
-                            {
-                                "SubMessageType": "S",
-                                "SubMessageText": "VBAKKOM has been processed successfully"
-                            },
-                            {
-                                "SubMessageType": "S",
-                                "SubMessageText": "VBAPKOM has been processed successfully"
-                            },
-                            {
-                                "SubMessageType": "S",
-                                "SubMessageText": "VBAPKOM has been processed successfully"
-                            },
-                            {
-                                "SubMessageType": "W",
-                                "SubMessageText": "The sales document is not yet complete: Edit data"
-                            },
-                            {
-                                "SubMessageType": "S",
-                                "SubMessageText": "Standard Order - HC 2100000233 has been saved."
-                            }
-                        ],
-                        "CustomerGroup1": "101",
-                        "TotalCreditCheckStatus": "",
-                        "Items": [
-                            {
-                                "SalesOrderItem": "10",
-                                "SalesOrderItemText": "ไฮดีเซล S",
-                                "Material": "1000110",
-                                "OrderQuantity": "30000.000",
-                                "OrderQuantityUnit": "L"
-                            },
-                            {
-                                "SalesOrderItem": "20",
-                                "SalesOrderItemText": "แก๊สโซฮอล์ 95S EVO",
-                                "Material": "1000024",
-                                "OrderQuantity": "40000.000",
-                                "OrderQuantityUnit": "L"
-                            }
-                        ]
-                    }
-                ]
-            }
-
+            let api_response = await axios.request(axiosConfig);
             let statusRes = api_response.data.SalesDocuments[0].MessageType;
             let response = [];
 
@@ -1354,138 +1303,69 @@ const getConfirmOrder = async (lic_code, order_id, action) => {
                     invalid_code: '-1',
                     message: api_response.data
                 });
+
+                await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_sap', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'error', action[0].value);
             } else {
                 response.push({
                     status: 'success',
                     data: api_response.data,
                 });
-            }
 
-            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_sap', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
+                await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_sap', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
 
-            let update_order_status_script = `update tbl_order set order_status = '1', mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' `
-            update_order_status_script += ` where id = '${order_id}'`;
-            await pgConn.execute(dbPrefix + lic_code, update_order_status_script, config.connectionString());
+                let update_order_status_script = `update tbl_order set order_status = '1', mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' `
+                update_order_status_script += ` where id = '${order_id}'`;
+                await pgConn.execute(dbPrefix + lic_code, update_order_status_script, config.connectionString());
 
 
-            // =========== เชื่อมต่อ SAP Data ลงฐานข้อมูล ===========
-            let sap_response = api_response.data;
-            if (sap_response && sap_response.Response && sap_response.Response.SalesOrders && Array.isArray(sap_response.Response.SalesOrders)) {
-                for (let sap_order of sap_response.Response.SalesOrders) {
-                    let sh_cus_ref = sap_order.SHCustomerReference;
-                    if (!sh_cus_ref) continue;
+                // =========== เชื่อมต่อ SAP Data ลงฐานข้อมูล ===========
+                let sap_response = api_response.data;
+                if (sap_response && sap_response.SalesDocuments && Array.isArray(sap_response.SalesDocuments)) {
+                    for (let sap_order of sap_response.SalesDocuments) {
+                        let sh_cus_ref = sap_order.SHCustomerReference;
+                        if (!sh_cus_ref) continue;
 
-                    // ===== เช็ค SHCustomerReference ว่ามีอยู่ในระบบหรือไม่ =====
-                    let checkScript = `SELECT id, order_no FROM public.tbl_order WHERE sh_cus_ref = '${sh_cus_ref}' AND rm_dt IS NULL LIMIT 1`;
-                    let checkResult = await pgConn.get(dbPrefix + lic_code, checkScript, config.connectionString());
+                        // ===== เช็ค SHCustomerReference ว่ามีอยู่ในระบบหรือไม่ =====
+                        let checkScript = `SELECT id, order_no FROM public.tbl_order WHERE sh_cus_ref = '${sh_cus_ref}' AND rm_dt IS NULL LIMIT 1`;
+                        let checkResult = await pgConn.get(dbPrefix + lic_code, checkScript, config.connectionString());
 
-                    // ===== Convert SAP Date to SQL Date =====
-                    let creation_dt = sap_order.CreationDate ? moment(sap_order.CreationDate, 'YYYYMMDD').format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
-                    let creation_tm = sap_order.CreationTime ? moment(sap_order.CreationTime, 'HHmmss').format('HH:mm:ss') : moment().format('HH:mm:ss');
-                    let ist_dt = `${creation_dt} ${creation_tm} `;
-                    // ===== Convert SAP Date to SQL Date =====
-                    let deli_date_req = sap_order.RequestedDeliveryDate ? moment(sap_order.RequestedDeliveryDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
-                    let cus_date_ref = sap_order.CustomerReferenceDate ? moment(sap_order.CustomerReferenceDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
+                        // ===== Convert SAP Date to SQL Date =====
+                        let creation_dt = sap_order.CreationDate ? moment(sap_order.CreationDate, 'YYYYMMDD').format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
+                        let creation_tm = sap_order.CreationTime ? moment(sap_order.CreationTime, 'HHmmss').format('HH:mm:ss') : moment().format('HH:mm:ss');
+                        let ist_dt = `${creation_dt} ${creation_tm} `;
+                        // ===== Convert SAP Date to SQL Date =====
+                        let deli_date_req = sap_order?.RequestedDeliveryDate ? moment(sap_order?.RequestedDeliveryDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
+                        let cus_date_ref = sap_order?.CustomerReferenceDate ? moment(sap_order?.CustomerReferenceDate, 'YYYYMMDD').format('YYYY-MM-DD') : null;
 
-                    if (!checkResult.code && checkResult.data.length > 0) {
-                        // ===== ถ้าเจอ SHCustomerReference แล้ว Update =====
-                        let existing_order_no = checkResult.data[0].order_no;
-                        let existing_id = checkResult.data[0].id;
-                        let updateOrderScript = `
-                            UPDATE public.tbl_order SET
-                                order_no = '${sap_order.SalesOrder}',
-                                status_deli = '${sap_order.OverallSDProcessStatus || ''}',
-                                mdf_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}'
-                            WHERE sh_cus_ref = '${sh_cus_ref}'
-                        `;
-                        await pgConn.execute(dbPrefix + lic_code, updateOrderScript, config.connectionString());
+                        if (!checkResult.code && checkResult.data.length > 0) {
+                            // ===== ถ้าเจอ SHCustomerReference แล้ว Update =====
+                            let existing_order_no = checkResult.data[0].order_no;
+                            let existing_id = checkResult.data[0].id;
+                            let orderId = existing_id || existing_order_no;
 
-                        // ===== Update Items =====
-                        if (sap_order.Items && Array.isArray(sap_order.Items)) {
-                            for (let sapItem of sap_order.Items) {
-                                let updateItemScript = `
-                                    UPDATE public.tbl_order_item 
-                                    SET
-                                        order_no = '${existing_id}',
-                                        sales_order_item = '${sapItem.SalesOrderItem}'
-                                    WHERE(order_no = '${existing_order_no}' OR order_no = '${existing_id}') 
-                                    AND item_no IN(SELECT itm_code FROM tbl_item WHERE itm_material_number = '${sapItem.Material}')
-                                `;
-                                await pgConn.execute(dbPrefix + lic_code, updateItemScript, config.connectionString());
-                            }
-                        }
-                    } else {
-                        // ===== ถ้าไม่เจอ SHCustomerReference แล้ว Insert =====
-                        let sap_order_no = sap_order.SalesOrder;
-                        let insertOrderScript = `
-                            INSERT INTO public.tbl_order
-                            (
-                                order_no, order_type, order_group, chanel, division, sold_to, ship_to,
-                                cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
-                                deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
-                                status_deli, ist_dt, order_flag, auto_order
-                            )
-                            VALUES
-                            (
-                                '${sap_order_no}', '${sap_order.SalesOrderType || ''}', '${sap_order.SalesOrganization || ''}', '${sap_order.DistributionChannel || '01'}', '${sap_order.OrganizationDivision || '04'}',
-                                '${sap_order.SoldToParty || ''}', '${sap_order.ShipToParty || ''}', '${sap_order.CustomerReference || ''}',
-                                ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
-                                '${sap_order.CustomerPurchaseOrderType || 'AOS'}', '${sap_order.NameofOrderer || ''}', '', '',
-                                ${deli_date_req ? "'" + deli_date_req + "'" : 'NULL'}, '${sap_order.DeliveryTime || ''}',
-                                '${sap_order.Description || ''}', '${sap_order.SHCustomerReference || ''}',
-                                ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
-                                '${sap_order.OverallSDProcessStatus || '0'}', '${ist_dt}', '1', '1'
-                            )
-                            RETURNING id
-                        `;
+                            let updateOrderScript = `
+                                UPDATE public.tbl_order SET
+                                    order_no = ${sap_order.SalesOrder},
+                                    status_deli = '${sap_order.OverallSDProcessStatus || 'A'}',
+                                    mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}'
+                                WHERE sh_cus_ref = '${sh_cus_ref}'
+                            `;
+                            await pgConn.execute(dbPrefix + lic_code, updateOrderScript, config.connectionString());
 
-                        insertOrderScript = insertOrderScript.replace(/'NULL'/gi, "NULL");
-                        let insertResult = await pgConn.get(dbPrefix + lic_code, insertOrderScript, config.connectionString());
-
-                        if (!insertResult.code && insertResult.data.length > 0) {
-                            let new_order_id = insertResult.data[0].id;
-
-                            if (sap_order.Items && Array.isArray(sap_order.Items)) {
-                                for (let sapItem of sap_order.Items) {
-                                    let material = sapItem.Material;
-                                    let itm_code = '';
-
-                                    let lookupMaterialScript = `SELECT itm_code FROM tbl_item WHERE itm_material_number = '${material}' LIMIT 1`;
-                                    let lookupResult = await pgConn.get(dbPrefix + lic_code, lookupMaterialScript, config.connectionString());
-                                    if (!lookupResult.code && lookupResult.data.length > 0) {
-                                        itm_code = lookupResult.data[0].itm_code;
-                                    }
-
-                                    if (itm_code) {
-                                        let insertItemScript = `
-                                            INSERT INTO public.tbl_order_item
-                                            (
-                                                order_no, 
-                                                item_no, 
-                                                item_qty, 
-                                                long_text_id,   
-                                                long_text, 
-                                                ist_dt, 
-                                                order_item_flag, 
-                                                auto_order, 
-                                                sales_order_item
-                                            )
-                                            VALUES(
-                                                '${new_order_id}', 
-                                                '${itm_code}', 
-                                                ${parseFloat(sapItem.OrderQuantity) || 0
-                                            }, 
-                                                '', 
-                                                '',
-                                                '${ist_dt}', 
-                                                '1', 
-                                                '1', 
-                                                '${sapItem.SalesOrderItem || ''}'
-                                            )`;
-                                        await pgConn.execute(dbPrefix + lic_code, insertItemScript, config.connectionString());
-                                    }
-                                }
-                            }
+                            // ===== Update Items =====
+                            // if (sap_order.Items && Array.isArray(sap_order.Items)) {
+                            //     for (let sapItem of sap_order.Items) {
+                            //         let updateItemScript = `
+                            //             UPDATE public.tbl_order_item 
+                            //             SET
+                            //                 order_no = ${orderId},
+                            //                 sales_order_item = '${sapItem.SalesOrderItem}'
+                            //             WHERE order_no = ${orderId} 
+                            //             AND item_no IN(SELECT itm_code FROM tbl_item WHERE itm_material_number = '${sapItem.Material}')
+                            //         `;
+                            //         await pgConn.execute(dbPrefix + lic_code, updateItemScript, config.connectionString());
+                            //     }
+                            // }
                         }
                     }
                 }
@@ -1534,55 +1414,6 @@ exports.getConfirmOrder = async (req, res, next) => {
     let response = [];
     let status = 'fail';
     let error_message = [];
-    let ex_data = [{
-        status: 'success',
-        data: {
-            "SalesDocuments": [
-                {
-                    "SalesOrder": "2100000069",
-                    "SHYourReference": "",
-                    "MessageType": "S",
-                    "MessageText": "Sales order has been created successfully.",
-                    "Messages": [
-                        {
-                            "SubMessageType": "S",
-                            "SubMessageText": "VBAKKOM has been processed successfully"
-                        },
-                        {
-                            "SubMessageType": "S",
-                            "SubMessageText": "VBAPKOM has been processed successfully"
-                        },
-                        {
-                            "SubMessageType": "S",
-                            "SubMessageText": "VBAPKOM has been processed successfully"
-                        },
-                        {
-                            "SubMessageType": "S",
-                            "SubMessageText": "Standard Order - HC 2100000069 has been saved."
-                        }
-                    ],
-                    "CustomerGroup1": "",
-                    "TotalCreditCheckStatus": "",
-                    "Items": [
-                        {
-                            "SalesOrderItem": "10",
-                            "SalesOrderItemText": "ไฮดีเซล S",
-                            "Material": "1000110",
-                            "OrderQuantity": "4000.000",
-                            "OrderQuantityUnit": "L"
-                        },
-                        {
-                            "SalesOrderItem": "20",
-                            "SalesOrderItemText": "แก๊สโซฮอล์ 95S EVO",
-                            "Material": "1000024",
-                            "OrderQuantity": "10000.000",
-                            "OrderQuantityUnit": "L"
-                        }
-                    ]
-                }
-            ]
-        }
-    }];
 
     for (let current_id of orderIds) {
         let result = await getConfirmOrder(lic_code, current_id, action);
