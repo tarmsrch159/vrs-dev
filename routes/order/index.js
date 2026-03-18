@@ -23,6 +23,7 @@ router.post('/re-order/information', order.reCreateOrderInformation);
 router.put('/information', order.addOrderInformation);
 router.patch('/information', order.setOrderInformation);
 router.patch('/status-deli/information', order.setStatusDeli);
+router.patch('/edit-item/information', order.editOrderItem);
 router.delete('/information/remove', order.removeOrderInformationById);
 
 // ============= Order - SAP =============
