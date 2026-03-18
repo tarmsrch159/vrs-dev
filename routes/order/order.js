@@ -2456,14 +2456,14 @@ exports.addOrderInformation = async (req, res, next) => {
             (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
                 cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
                 deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
-                status_deli, ist_dt, order_flag, auto_order, order_status)
+                status_deli, ist_dt, order_flag, auto_order, order_status, created_by_tms)
         VALUES
             (NULL, '${order_type}', '${order_group}', '${chanel}', '${division}',
                 '${sold_to}', '${ship_to}', '${(cus_ref || '').replace(/'/g, "''")}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
                 '${(po_name || 'AOS').replace(/'/g, "''")}', '${(order_by || 'AOS').replace(/'/g, "''")}', '${ship_cond || 'T1'}', '${pay_term || ''}',
                 ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}',
                 '${(description || '').replace(/'/g, "''")}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
-                'A', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0, 0) RETURNING id`;
+                'A', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0, 0, '${action[0].id}') RETURNING id`;
 
         script = script.replace(/'NULL'/gi, "NULL");
         let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
