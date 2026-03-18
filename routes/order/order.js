@@ -108,11 +108,11 @@ exports.getOrderInformation = async (req, res, next) => {
                 left join tbl_petrol on tbl_order.ship_to = tbl_petrol.ptrl_number
                 left join tbl_master_time on tbl_order.deli_time_req = tbl_master_time.time_code
                 left join (
-                    SELECT order_no, SUM(item_qty::numeric) as total_qty 
+                    SELECT CAST(order_no AS TEXT) as order_no_text, SUM(item_qty::numeric) as total_qty 
                     FROM tbl_order_item 
                     WHERE rm_dt IS NULL 
-                    GROUP BY order_no
-                ) tbl_sum_item on tbl_order.id::text = tbl_sum_item.order_no
+                    GROUP BY CAST(order_no AS TEXT)
+                ) tbl_sum_item on CAST(tbl_order.id AS TEXT) = tbl_sum_item.order_no_text
                 where tbl_order.rm_dt IS NULL`;
             }
 
@@ -1477,7 +1477,6 @@ exports.getOrderInformationHana = async (req, res, next) => {
 
         let payloadData = JSON.stringify({
             "SOInputParameter": {
-                // 2. ใส่ SalesOrderList ที่เป็น Array ลงไปได้เลย
                 "SalesOrderList": SalesOrderList,
                 "SalesOrderTypeList": inputParam.SalesOrderTypeList || [],
                 "ShipToPartyList": inputParam.ShipToPartyList || [],
@@ -1505,7 +1504,6 @@ exports.getOrderInformationHana = async (req, res, next) => {
 
         try {
             let apiResponse = await axios.request(axiosConfig);
-            // console.log(apiResponse.data.Response.SalesOrders)
             let response = [{
                 status: 'success',
                 invalid_code: '0',
@@ -1516,13 +1514,14 @@ exports.getOrderInformationHana = async (req, res, next) => {
             res.status(200).send(response);
             for (let i = 0; i < apiResponse.data.Response.SalesOrders.length; i++) {
                 let salesOrder = apiResponse.data.Response.SalesOrders[i];
+                // =========== เช็ค SHCustomerReference ว่ามีใน tbl_order หรือไม่ ==================
                 let check_script_order = `SELECT * FROM tbl_order WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
                 let check_order = await pgConn.get(dbPrefix + lic_code, check_script_order, config.connectionString());
                 if (!check_order.code) {
                     if (check_order.data.length > 0) {
                         console.log("เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
 
-                        // ================ เช็ค ship_to ว่ามีใน tbl_petrol หรือไม่ ==================
+                        // ================ เช็ค ship_to ว่ามีใน tbl_petrol ==================
                         let isOrderComplete = true;
                         if (salesOrder.ShipToParty) {
                             let check_script_ship_to = `SELECT ptrl_number FROM tbl_petrol WHERE ptrl_number = '${salesOrder.ShipToParty}' LIMIT 1`;
@@ -1536,11 +1535,11 @@ exports.getOrderInformationHana = async (req, res, next) => {
                         }
 
                         // ================ เช็ค Material ใน Items ว่ามีใน tbl_item หรือไม่ ==================
-                        if (isOrderComplete && salesOrder.Items && Array.isArray(salesOrder.Items) && salesOrder.Items.length > 0) {
+                        if (salesOrder.Items && Array.isArray(salesOrder.Items) && salesOrder.Items.length > 0) {
                             for (let j = 0; j < salesOrder.Items.length; j++) {
                                 let item = salesOrder.Items[j];
                                 if (item.Material) {
-                                    let check_script_material = `SELECT itm_code FROM tbl_item WHERE itm_code = '${item.Material}' LIMIT 1`;
+                                    let check_script_material = `SELECT itm_code FROM tbl_item WHERE itm_material_number = '${item.Material}' LIMIT 1`;
                                     let check_material = await pgConn.get(dbPrefix + lic_code, check_script_material, config.connectionString());
                                     if (check_material.code || check_material.data.length === 0) {
                                         console.log("ไม่เจอ Material (tbl_item) : " + item.Material);
@@ -1573,7 +1572,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
                             order_group = '${salesOrder.SalesOrganization || ''}',
                             sold_to = '${salesOrder.SoldToParty || ''}',
                             ship_to = '${salesOrder.ShipToParty || ''}',
-                            cus_ref = '${salesOrder.CustomerReference || ''}',
+                            cus_ref = '${(salesOrder.CustomerReference || '').replace(/'/g, "''")}',
                             cus_date_ref = ${salesOrder.CustomerReferenceDate ? `'${salesOrder.CustomerReferenceDate}'` : 'NULL'},
                             status_deli = '${salesOrder.OverallDeliveryStatus || ''}',
                             status_block = '${salesOrder.TotalBlockStatus || ''}',
@@ -1586,7 +1585,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
                             created_by = '${salesOrder.CreatedByUser || ''}',
                             deli_date_req = ${salesOrder.RequestedDeliveryDate ? `'${salesOrder.RequestedDeliveryDate}'` : 'NULL'},
                             deli_time_req = ${salesOrder.DeliveryTime ? `'${salesOrder.DeliveryTime}'` : 'NULL'},
-                            description = '${salesOrder.Description || ''}',
+                            description = '${(salesOrder.Description || '').replace(/'/g, "''")}',
                             order_status = 1,
                             mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
                             WHERE sh_cus_ref = '${salesOrder.SHCustomerReference}'`;
@@ -1606,14 +1605,81 @@ exports.getOrderInformationHana = async (req, res, next) => {
                                     misc_deli_no = '${item.MiscellaneousDeliveryNumber || ''}',
                                     mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}'
                                     WHERE order_no = '${orderId}' 
-                                    AND item_no = '${item.Material || ''}' 
+                                    AND item_no = (SELECT itm_code FROM tbl_item WHERE itm_material_number = '${item.Material}' LIMIT 1)
                                     AND order_item_flag = '1'`;
                                 await pgConn.execute(dbPrefix + lic_code, update_item_script, config.connectionString());
                             }
                         }
+                    } else {
+                        // ================ กรณีไม่เจอ Order ในระบบ → เพื่ม Order ใหม่จาก SAP ==================
+                        console.log("ไม่เจอ SHCustomerReference ในระบบ → กำลังสร้าง Order ใหม่: " + salesOrder.SHCustomerReference);
+
+                        let insert_order_script = `INSERT INTO tbl_order
+                            (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
+                                cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+                                deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+                                status_deli, status_block, status_sd_process, status_check, sd_doc_reject,
+                                cus_group, hana_created, hana_time, created_by,
+                                ist_dt, order_flag, auto_order, order_status)
+                            VALUES
+                            ('${salesOrder.SalesOrder || ''}', '${salesOrder.SalesOrderType || ''}', '${salesOrder.SalesOrganization || ''}', 
+                             '${salesOrder.DistributionChannel || ''}', '${salesOrder.OrganizationDivision || ''}',
+                             '${salesOrder.SoldToParty || ''}', '${salesOrder.ShipToParty || ''}', 
+                             '${(salesOrder.CustomerReference || '').replace(/'/g, "''")}', ${salesOrder.CustomerReferenceDate ? `'${salesOrder.CustomerReferenceDate}'` : 'NULL'},
+                             'AOS', 'AOS', 'T1', '',
+                             ${salesOrder.RequestedDeliveryDate ? `'${salesOrder.RequestedDeliveryDate}'` : 'NULL'}, '${salesOrder.DeliveryTime || ''}',
+                             '${(salesOrder.Description || '').replace(/'/g, "''")}', '${salesOrder.SHCustomerReference || ''}', 
+                             ${salesOrder.CustomerReferenceDate ? `'${salesOrder.CustomerReferenceDate}'` : 'NULL'},
+                             '${salesOrder.OverallDeliveryStatus || ''}', '${salesOrder.TotalBlockStatus || ''}', 
+                             '${salesOrder.OverallSDProcessStatus || ''}', '${salesOrder.TotalCreditCheckStatus || ''}', 
+                             '${salesOrder.OverallSDDocumentRejectionSts || ''}', '${salesOrder.CustomerGroup1 || ''}',
+                             ${salesOrder.CreationDate ? `'${salesOrder.CreationDate}'` : 'NULL'}, '${salesOrder.CreationTime || ''}', 
+                             '${salesOrder.CreatedByUser || ''}',
+                             '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0, 1) RETURNING id`;
+
+                        let res_new_order = await pgConn.get(dbPrefix + lic_code, insert_order_script, config.connectionString());
+
+                        if (!res_new_order.code && res_new_order.data.length > 0) {
+                            let newOrderId = res_new_order.data[0].id;
+                            console.log(`สร้าง Order ใหม่สำเร็จ (ID: ${newOrderId}) → กำลังเพิ่มรายการสินค้า...`);
+
+                            if (salesOrder.Items && Array.isArray(salesOrder.Items) && salesOrder.Items.length > 0) {
+                                for (let j = 0; j < salesOrder.Items.length; j++) {
+                                    let item = salesOrder.Items[j];
+                                    let itm_code = '';
+
+                                    // ===== ค้นหา itm_code จาก material number ของ SAP =====
+                                    if (item.Material) {
+                                        let check_item_script = `SELECT itm_code FROM tbl_item WHERE itm_material_number = '${item.Material}' LIMIT 1`;
+                                        let checkItemResult = await pgConn.get(dbPrefix + lic_code, check_item_script, config.connectionString());
+                                        if (!checkItemResult.code && checkItemResult.data.length > 0) {
+                                            itm_code = checkItemResult.data[0].itm_code;
+                                        }
+                                    }
+
+                                    if (itm_code) {
+                                        let insert_item_script = `INSERT INTO tbl_order_item
+                                            (order_no, item_no, item_qty, ist_dt, order_item_flag, auto_order, 
+                                             sales_order_item, sd_reject_reason, sd_process_status, deli_status, misc_deli_no)
+                                            VALUES
+                                            (${newOrderId}, '${itm_code}', ${item.OrderQuantity ? parseFloat(item.OrderQuantity) : 0}, 
+                                             '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0,
+                                             '${item.SalesOrderItem || ''}', '${item.SalesDocumentRjcnReason || ''}', 
+                                             '${item.SDProcessStatus || ''}', '${item.DeliveryStatus || ''}', 
+                                             '${item.MiscellaneousDeliveryNumber || ''}')`;
+
+                                        await pgConn.execute(dbPrefix + lic_code, insert_item_script, config.connectionString());
+                                    } else {
+                                        console.log(`ข้ามการเพิ่มไอเทม: ไม่พบ Material [${item.Material}] ในระบบ`);
+                                    }
+                                }
+                            }
+                        } else {
+                            console.error("เกิดข้อผิดพลาดในการสร้าง Order ใหม่จาก SAP: " + (res_new_order.message || 'Unknown Error'));
+                        }
                     }
                 } else {
-                    console.log("ไม่เจอ SHCustomerReference : " + salesOrder.SHCustomerReference);
+                    console.error("Database Error (check_order): " + check_order.message);
                 }
             }
 
@@ -1651,7 +1717,6 @@ exports.getOrderInformationHana = async (req, res, next) => {
 
 // =========== ส่งคำขอยกเลิกคำสั่งซื้อ ไปที่ HANA
 exports.cancelOrderInformationHana = async (req, res, next) => {
-
     return (async () => {
         let lic_code = req.header('lic_code');
         let { order_no, items, action } = req.body[0];
@@ -1916,9 +1981,9 @@ exports.addOrderInformation = async (req, res, next) => {
             return;
         }
 
-        chanel = chanel = undefined ? "01" : chanel;
-        division = division = undefined ? "04" : division;
-        let cust_date_delidate = deli_date_req = undefined ? "" : deli_date_req;
+        chanel = (chanel === undefined || chanel === "") ? "01" : chanel;
+        division = (division === undefined || division === "") ? "04" : division;
+        deli_date_req = (deli_date_req === undefined || deli_date_req === "") ? null : deli_date_req;
 
         let script = ``;
         // =========== Order No Mockup ===========  
@@ -2001,12 +2066,12 @@ exports.addOrderInformation = async (req, res, next) => {
                 deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
                 status_deli, ist_dt, order_flag, auto_order, order_status)
         VALUES
-            (NULL, '${order_type}', '${order_group}', '${chanel || '01'}', '${division || '04'}',
-                '${sold_to}', '${ship_to}', '${cus_ref || ''}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
-                'AOS', '${order_by || 'AOS'}', '${ship_cond || 'T1'}', '${pay_term || ''}',
+            (NULL, '${order_type}', '${order_group}', '${chanel}', '${division}',
+                '${sold_to}', '${ship_to}', '${(cus_ref || '').replace(/'/g, "''")}', ${cus_date_ref ? "'" + moment(cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
+                '${(po_name || 'AOS').replace(/'/g, "''")}', '${(order_by || 'AOS').replace(/'/g, "''")}', '${ship_cond || 'T1'}', '${pay_term || ''}',
                 ${deli_date_req ? "'" + moment(deli_date_req).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'}, '${deli_time_req || ''}',
-                '${description || ''}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
-                'A', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', '0', '0') RETURNING id`;
+                '${(description || '').replace(/'/g, "''")}', '${sh_cus_ref || ''}', ${sh_cus_date_ref ? "'" + moment(sh_cus_date_ref).format('YYYY-MM-DD HH:mm:ss') + "'" : 'NULL'},
+                'A', '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0, 0) RETURNING id`;
 
         script = script.replace(/'NULL'/gi, "NULL");
         let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
@@ -2038,48 +2103,61 @@ exports.addOrderInformation = async (req, res, next) => {
 
         // ====================== เพิ่มข้อมูลลงใน tbl_order_item จาก order_item array ======================
         if (order_item && Array.isArray(order_item) && order_item.length > 0) {
+            console.log(`Database Name: ${dbPrefix + lic_code}, Order ID: ${order_id}, Item Count: ${order_item.length}`);
+
             for (var i = 0; i < order_item.length; i++) {
                 last_sales_order_item += 10;
                 let sales_order_item = String(last_sales_order_item);
                 var itm_code = order_item[i].itm_code;
                 var item_quantity = parseFloat(order_item[i].item_quantity) || 0;
-                var itm_material_number = order_item[i].itm_material_number;
+                var itm_material_number = (order_item[i].itm_material_number || "").trim();
                 var deli_plant = order_item[i].deli_plant;
 
-                // ===== เช็ค itm_material_number ว่ามีอยู่ใน tbl_item หรือไม่ =====
-                if (itm_material_number) {
-                    let check_item = `SELECT * FROM tbl_item WHERE itm_material_number = '${itm_material_number}'`
-                    let checkItem = await pgConn.get(dbPrefix + lic_code, check_item, config.connectionString());
+                console.log(`ตรวจสอบ Item [${i}]: Material=${itm_material_number}, Code=${itm_code}`);
 
-                    if (!checkItem.code && checkItem.data.length > 0) {
-                        itm_code = checkItem.data[0].itm_code; // ใช้ itm_code ที่เชื่อมได้จากใน DB
+                // ===== เช็ค itm_material_number ว่ามีอยู่ใน tbl_item หรือไม่ (ถ้าไม่มี itm_code มาให้) =====
+                if (itm_material_number && !itm_code) {
+                    let check_item_script = `SELECT itm_code FROM tbl_item WHERE itm_material_number = '${itm_material_number}' LIMIT 1`
+                    let checkItemResult = await pgConn.get(dbPrefix + lic_code, check_item_script, config.connectionString());
 
-                        // ===== เพิ่มข้อมูลลงใน tbl_order_item =====
-                        if (order_item[i].item_text && Array.isArray(order_item[i].item_text) && order_item[i].item_text.length > 0) {
-                            // กรณีที่มี item_text
-                            for (var k = 0; k < order_item[i].item_text.length; k++) {
-                                var item_text = order_item[i].item_text[k];
-                                let script_item = `INSERT INTO public.tbl_order_item
-            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item)
-        VALUES('${order_id}', '${itm_code}', ${item_quantity}, '${item_text.long_text_id}', '${item_text.long_text}',
-            '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
-                                await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
-                            }
-                        } else {
-                            // กรณีที่ไม่มี item_text
-                            let script_item = `INSERT INTO public.tbl_order_item
-            (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item)
-        VALUES('${order_id}', '${itm_code}', ${item_quantity}, '', '',
-            '${moment().format('YYYY - MM - DD HH: mm: ss')}', '1', '0', '${deli_plant || ''}', '${sales_order_item}')`;
-                            await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
-                        }
-
-                    } else {
-                        // ===== ข้ามรายการน้ำมันที่ไม่มีอยู่ในระบบ ======
-                        console.log(`ข้ามรายการน้ำมัน: material number ${itm_material_number} ไม่พบในระบบ`);
-                        invalid_material_item.push(itm_material_number)
-                        continue;
+                    if (!checkItemResult.code && checkItemResult.data.length > 0) {
+                        itm_code = checkItemResult.data[0].itm_code;
                     }
+                }
+
+                if (itm_code) {
+                    // ===== เพิ่มข้อมูลลงใน tbl_order_item =====
+                    if (order_item[i].item_text && Array.isArray(order_item[i].item_text) && order_item[i].item_text.length > 0) {
+                        // กรณีที่มี item_text
+                        for (var k = 0; k < order_item[i].item_text.length; k++) {
+                            var item_text = order_item[i].item_text[k];
+                            let script_item = `INSERT INTO public.tbl_order_item
+                        (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item)
+                    VALUES(${order_id}, '${itm_code}', ${item_quantity}, '${(item_text.long_text_id || '').replace(/'/g, "''")}', '${(item_text.long_text || '').replace(/'/g, "''")}',
+                        '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0, '${deli_plant || ''}', '${sales_order_item}')`;
+
+                            console.log(`กำลัง Insert Item [${itm_code}] (with text) สำหรับ Order ${order_id}`);
+                            let res_item = await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                            if (res_item.code) {
+                                console.error(`Error Insert Item [${itm_code}]: ${res_item.message}`);
+                            }
+                        }
+                    } else {
+                        // กรณีที่ไม่มี item_text
+                        let script_item = `INSERT INTO public.tbl_order_item
+        (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item)
+    VALUES(${order_id}, '${itm_code}', ${item_quantity}, '', '',
+        '${moment().format('YYYY-MM-DD HH:mm:ss')}', '1', 0, '${deli_plant || ''}', '${sales_order_item}')`;
+
+                        console.log(`กำลัง Insert Item [${itm_code}] (no text) สำหรับ Order ${order_id}`);
+                        let res_item = await pgConn.execute(dbPrefix + lic_code, script_item, config.connectionString());
+                        if (res_item.code) {
+                            console.error(`Error Insert Item [${itm_code}]: ${res_item.message}`);
+                        }
+                    }
+                } else {
+                    console.log(`ข้ามรายการน้ำมัน [${i}]: ไม่พบ itm_code สำหรับ material number ${itm_material_number}`);
+                    invalid_material_item.push(itm_material_number || itm_code);
                 }
             }
         }
