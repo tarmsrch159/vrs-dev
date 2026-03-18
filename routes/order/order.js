@@ -82,7 +82,7 @@ exports.getOrderInformation = async (req, res, next) => {
                     FROM tbl_order_item 
                     WHERE rm_dt IS NULL 
                     GROUP BY order_no
-                ) tbl_sum_item on tbl_order.id::text = tbl_sum_item.order_no
+                ) tbl_sum_item on tbl_order.id = tbl_sum_item.order_no
                 where tbl_order.rm_dt IS NULL and tbl_order.order_no = '${order_no}' `;
             }
             else {
@@ -1177,24 +1177,19 @@ exports.getOrderRunout = async (req, res, next) => {
 }
 
 // =========== ดึงข้อมูลรายการสั่งซื้อ ที่มีการยืนยันจาก HANA ===========
-exports.getConfirmOrder = async (req, res, next) => {
-
-    let lic_code = req.header('lic_code');
-    let { order_id, action } = req.body[0];
+const getConfirmOrder = async (lic_code, order_id, action) => {
 
     if (!order_id || !action) {
         let response = [{
             status: 'error',
             invalid_code: '-1',
-            message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
-            data: [],
-            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง'
         }];
-        res.status(200).send(response);
-        return;
+        return response;
     }
 
     return (async () => {
+
         // ================ ดึงข้อมูล tbl_order ==================
         let orderScript = `SELECT * FROM tbl_order WHERE id = '${order_id}' AND order_flag = '1' LIMIT 1`;
         let orderResult = await pgConn.get(dbPrefix + lic_code, orderScript, config.connectionString());
@@ -1203,12 +1198,9 @@ exports.getConfirmOrder = async (req, res, next) => {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่พบข้อมูลออเดอร์ในระบบ',
-                data: [],
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                message: 'ไม่พบข้อมูลออเดอร์ในระบบ'
             }];
-            res.status(200).send(response);
-            return;
+            return response;
         }
 
         let orderData = orderResult.data[0];
@@ -1232,9 +1224,9 @@ exports.getConfirmOrder = async (req, res, next) => {
 
                 let sapItemObj = {
                     "SalesOrderItem": salesOrderItem,
-                    "Material": item.itm_material_number || "",
+                    "Material": item.itm_material_number,
                     "OrderQuantity": qty,
-                    "DeliveryPlant": "2I01", // Hardcoded per example
+                    "DeliveryPlant": "",
                     "ItemText": []
                 };
 
@@ -1257,12 +1249,9 @@ exports.getConfirmOrder = async (req, res, next) => {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'กรุณาระบุประเภทออเดอร์ และกลุ่มออเดอร์',
-                data: [],
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                message: 'กรุณาระบุประเภทออเดอร์ และกลุ่มออเดอร์'
             }];
-            res.status(200).send(response);
-            return;
+            return response;
         }
 
         let payloadData = JSON.stringify({
@@ -1278,7 +1267,7 @@ exports.getConfirmOrder = async (req, res, next) => {
                     "CustomerReferenceDate": cus_date_ref_formatted,
                     "NameofOrderer": orderData.order_by || "AOS",
                     "ShippingCondition": orderData.ship_cond || "T1",
-                    "CustomerPaymentTerms": orderData.pay_term || "Z006",
+                    "CustomerPaymentTerms": orderData.pay_term,
                     "RequestedDeliveryDate": deli_date_req_formatted,
                     "DeliveryTime": orderData.deli_time_req || "Z05",
                     "Description": orderData.description || "",
@@ -1289,9 +1278,7 @@ exports.getConfirmOrder = async (req, res, next) => {
                 }
             ]
         });
-
-        console.log(payloadData);
-        return;
+        // console.log(payloadData);
 
         // ================ API Config ==================
         let axiosConfig = {
@@ -1306,16 +1293,73 @@ exports.getConfirmOrder = async (req, res, next) => {
         };
 
         try {
-            let api_response = await axios.request(axiosConfig);
+            // let api_response = await axios.request(axiosConfig);
+            let api_response = {
+                "SalesDocuments": [
+                    {
+                        "SalesOrder": "2100000233",
+                        "SHCustomerReference": "AOS202606180003",
+                        "MessageType": "S",
+                        "MessageText": "The sales order has been created but has not yet been completed.",
+                        "Messages": [
+                            {
+                                "SubMessageType": "S",
+                                "SubMessageText": "VBAKKOM has been processed successfully"
+                            },
+                            {
+                                "SubMessageType": "S",
+                                "SubMessageText": "VBAPKOM has been processed successfully"
+                            },
+                            {
+                                "SubMessageType": "S",
+                                "SubMessageText": "VBAPKOM has been processed successfully"
+                            },
+                            {
+                                "SubMessageType": "W",
+                                "SubMessageText": "The sales document is not yet complete: Edit data"
+                            },
+                            {
+                                "SubMessageType": "S",
+                                "SubMessageText": "Standard Order - HC 2100000233 has been saved."
+                            }
+                        ],
+                        "CustomerGroup1": "101",
+                        "TotalCreditCheckStatus": "",
+                        "Items": [
+                            {
+                                "SalesOrderItem": "10",
+                                "SalesOrderItemText": "ไฮดีเซล S",
+                                "Material": "1000110",
+                                "OrderQuantity": "30000.000",
+                                "OrderQuantityUnit": "L"
+                            },
+                            {
+                                "SalesOrderItem": "20",
+                                "SalesOrderItemText": "แก๊สโซฮอล์ 95S EVO",
+                                "Material": "1000024",
+                                "OrderQuantity": "40000.000",
+                                "OrderQuantityUnit": "L"
+                            }
+                        ]
+                    }
+                ]
+            }
 
-            let response = [{
-                status: 'success',
-                invalid_code: '0',
-                message: 'ยืนยันคำสั่งซื้อสำเร็จ API Called Successfully',
-                data: api_response.data,
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
+            let statusRes = api_response.data.SalesDocuments[0].MessageType;
+            let response = [];
+
+            if (statusRes === 'E') {
+                response.push({
+                    status: 'error',
+                    invalid_code: '-1',
+                    message: api_response.data
+                });
+            } else {
+                response.push({
+                    status: 'success',
+                    data: api_response.data,
+                });
+            }
 
             await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_sap', JSON.stringify({ order_id, ...JSON.parse(payloadData) }), 'success', action[0].value);
 
@@ -1347,41 +1391,53 @@ exports.getConfirmOrder = async (req, res, next) => {
                         // ===== ถ้าเจอ SHCustomerReference แล้ว Update =====
                         let existing_order_no = checkResult.data[0].order_no;
                         let existing_id = checkResult.data[0].id;
-                        let updateOrderScript = `UPDATE public.tbl_order SET
-            order_no = '${sap_order.SalesOrder}',
-                status_deli = '${sap_order.OverallSDProcessStatus || ''}',
-                    mdf_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}'
-                            WHERE sh_cus_ref = '${sh_cus_ref}'`;
+                        let updateOrderScript = `
+                            UPDATE public.tbl_order SET
+                                order_no = '${sap_order.SalesOrder}',
+                                status_deli = '${sap_order.OverallSDProcessStatus || ''}',
+                                mdf_dt = '${moment().format('YYYY - MM - DD HH: mm:ss')}'
+                            WHERE sh_cus_ref = '${sh_cus_ref}'
+                        `;
                         await pgConn.execute(dbPrefix + lic_code, updateOrderScript, config.connectionString());
 
                         // ===== Update Items =====
                         if (sap_order.Items && Array.isArray(sap_order.Items)) {
                             for (let sapItem of sap_order.Items) {
-                                let updateItemScript = `UPDATE public.tbl_order_item SET
-            order_no = '${existing_id}',
-                sales_order_item = '${sapItem.SalesOrderItem}'
-            WHERE(order_no = '${existing_order_no}' OR order_no = '${existing_id}') 
-                                    AND item_no IN(SELECT itm_code FROM tbl_item WHERE itm_material_number = '${sapItem.Material}')`;
+                                let updateItemScript = `
+                                    UPDATE public.tbl_order_item 
+                                    SET
+                                        order_no = '${existing_id}',
+                                        sales_order_item = '${sapItem.SalesOrderItem}'
+                                    WHERE(order_no = '${existing_order_no}' OR order_no = '${existing_id}') 
+                                    AND item_no IN(SELECT itm_code FROM tbl_item WHERE itm_material_number = '${sapItem.Material}')
+                                `;
                                 await pgConn.execute(dbPrefix + lic_code, updateItemScript, config.connectionString());
                             }
                         }
                     } else {
                         // ===== ถ้าไม่เจอ SHCustomerReference แล้ว Insert =====
                         let sap_order_no = sap_order.SalesOrder;
-                        let insertOrderScript = `INSERT INTO public.tbl_order
-                (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
-                    cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
-                    deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
-                    status_deli, ist_dt, order_flag, auto_order)
-            VALUES
-                ('${sap_order_no}', '${sap_order.SalesOrderType || ''}', '${sap_order.SalesOrganization || ''}', '${sap_order.DistributionChannel || '01'}', '${sap_order.OrganizationDivision || '04'}',
-                    '${sap_order.SoldToParty || ''}', '${sap_order.ShipToParty || ''}', '${sap_order.CustomerReference || ''}',
-                    ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
-                    '${sap_order.CustomerPurchaseOrderType || 'AOS'}', '${sap_order.NameofOrderer || ''}', '', '',
-                    ${deli_date_req ? "'" + deli_date_req + "'" : 'NULL'}, '${sap_order.DeliveryTime || ''}',
-                    '${sap_order.Description || ''}', '${sap_order.SHCustomerReference || ''}',
-                    ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
-                    '${sap_order.OverallSDProcessStatus || '0'}', '${ist_dt}', '1', '1') RETURNING id`;
+                        let insertOrderScript = `
+                            INSERT INTO public.tbl_order
+                            (
+                                order_no, order_type, order_group, chanel, division, sold_to, ship_to,
+                                cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+                                deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+                                status_deli, ist_dt, order_flag, auto_order
+                            )
+                            VALUES
+                            (
+                                '${sap_order_no}', '${sap_order.SalesOrderType || ''}', '${sap_order.SalesOrganization || ''}', '${sap_order.DistributionChannel || '01'}', '${sap_order.OrganizationDivision || '04'}',
+                                '${sap_order.SoldToParty || ''}', '${sap_order.ShipToParty || ''}', '${sap_order.CustomerReference || ''}',
+                                ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
+                                '${sap_order.CustomerPurchaseOrderType || 'AOS'}', '${sap_order.NameofOrderer || ''}', '', '',
+                                ${deli_date_req ? "'" + deli_date_req + "'" : 'NULL'}, '${sap_order.DeliveryTime || ''}',
+                                '${sap_order.Description || ''}', '${sap_order.SHCustomerReference || ''}',
+                                ${cus_date_ref ? "'" + cus_date_ref + "'" : 'NULL'},
+                                '${sap_order.OverallSDProcessStatus || '0'}', '${ist_dt}', '1', '1'
+                            )
+                            RETURNING id
+                        `;
 
                         insertOrderScript = insertOrderScript.replace(/'NULL'/gi, "NULL");
                         let insertResult = await pgConn.get(dbPrefix + lic_code, insertOrderScript, config.connectionString());
@@ -1401,11 +1457,31 @@ exports.getConfirmOrder = async (req, res, next) => {
                                     }
 
                                     if (itm_code) {
-                                        let insertItemScript = `INSERT INTO public.tbl_order_item
-                (order_no, item_no, item_qty, long_text_id, long_text, ist_dt, order_item_flag, auto_order, sales_order_item)
-            VALUES('${new_order_id}', '${itm_code}', ${parseFloat(sapItem.OrderQuantity) || 0
-                                            }, '', '',
-            '${ist_dt}', '1', '1', '${sapItem.SalesOrderItem || ''}')`;
+                                        let insertItemScript = `
+                                            INSERT INTO public.tbl_order_item
+                                            (
+                                                order_no, 
+                                                item_no, 
+                                                item_qty, 
+                                                long_text_id,   
+                                                long_text, 
+                                                ist_dt, 
+                                                order_item_flag, 
+                                                auto_order, 
+                                                sales_order_item
+                                            )
+                                            VALUES(
+                                                '${new_order_id}', 
+                                                '${itm_code}', 
+                                                ${parseFloat(sapItem.OrderQuantity) || 0
+                                            }, 
+                                                '', 
+                                                '',
+                                                '${ist_dt}', 
+                                                '1', 
+                                                '1', 
+                                                '${sapItem.SalesOrderItem || ''}'
+                                            )`;
                                         await pgConn.execute(dbPrefix + lic_code, insertItemScript, config.connectionString());
                                     }
                                 }
@@ -1414,24 +1490,24 @@ exports.getConfirmOrder = async (req, res, next) => {
                     }
                 }
             }
-            return;
+
+            return response;
 
         } catch (error) {
-            console.log(error);
-            let errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+            // console.log(error);
+            let errMsg = error.response ? error.response.data : error.message;
+            let errDetail = errMsg.fault.detail.errorcode;
+
             let response = [{
                 status: 'error',
                 invalid_code: '-2',
-                message: 'External API Error: ' + errMsg,
+                message: 'External API Error: ' + errDetail,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
-            if (!res.headersSent) {
-                res.status(200).send(response);
-            }
 
-            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_id }), errMsg, action[0].value);
-            return;
+            await xglobal.action_logs(lic_code, action[0].id, 'confirm_order_api_error', JSON.stringify({ order_id }), JSON.stringify(errMsg), action[0].value);
+            return response;
         }
 
     })().catch(async (err) => {
@@ -1443,11 +1519,106 @@ exports.getConfirmOrder = async (req, res, next) => {
             data: [],
             response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
         }];
-        if (!res.headersSent) {
-            res.status(200).send(response);
-        }
+        return response;
     });
 
+};
+
+exports.getConfirmOrder = async (req, res, next) => {
+    let lic_code = req.header('lic_code');
+    let { order_id, action } = req.body[0];
+
+    // ปรับให้รองรับทั้งค่าเดี่ยว และ Array
+    let orderIds = Array.isArray(order_id) ? order_id : [order_id];
+
+    let response = [];
+    let status = 'fail';
+    let error_message = [];
+    let ex_data = [{
+        status: 'success',
+        data: {
+            "SalesDocuments": [
+                {
+                    "SalesOrder": "2100000069",
+                    "SHYourReference": "",
+                    "MessageType": "S",
+                    "MessageText": "Sales order has been created successfully.",
+                    "Messages": [
+                        {
+                            "SubMessageType": "S",
+                            "SubMessageText": "VBAKKOM has been processed successfully"
+                        },
+                        {
+                            "SubMessageType": "S",
+                            "SubMessageText": "VBAPKOM has been processed successfully"
+                        },
+                        {
+                            "SubMessageType": "S",
+                            "SubMessageText": "VBAPKOM has been processed successfully"
+                        },
+                        {
+                            "SubMessageType": "S",
+                            "SubMessageText": "Standard Order - HC 2100000069 has been saved."
+                        }
+                    ],
+                    "CustomerGroup1": "",
+                    "TotalCreditCheckStatus": "",
+                    "Items": [
+                        {
+                            "SalesOrderItem": "10",
+                            "SalesOrderItemText": "ไฮดีเซล S",
+                            "Material": "1000110",
+                            "OrderQuantity": "4000.000",
+                            "OrderQuantityUnit": "L"
+                        },
+                        {
+                            "SalesOrderItem": "20",
+                            "SalesOrderItemText": "แก๊สโซฮอล์ 95S EVO",
+                            "Material": "1000024",
+                            "OrderQuantity": "10000.000",
+                            "OrderQuantityUnit": "L"
+                        }
+                    ]
+                }
+            ]
+        }
+    }];
+
+    for (let current_id of orderIds) {
+        let result = await getConfirmOrder(lic_code, current_id, action);
+        // let result = ex_data;
+        console.log('status =>', result[0].status);
+        console.log('result =>', result);
+
+        if (result[0].status === 'success') {
+            status = 'success';
+            response.push(result[0].data);
+        } else {
+            const msg = Array.isArray(result) ? result[0]?.message : (result?.message || 'Internal Error');
+            const sDocs = msg?.SalesDocuments;
+
+            if (sDocs && sDocs.length > 0) {
+                error_message.push({
+                    order_id: current_id,
+                    message_text: sDocs[0].MessageText,
+                    message_value: sDocs[0].SHCustomerReference,
+                    message_sub: sDocs[0].Messages
+                });
+            } else {
+
+                error_message.push({
+                    order_id: current_id,
+                    message_text: msg
+                });
+            }
+        }
+    }
+
+    res.status(200).send([{
+        status: status,
+        error_message: error_message,
+        data: response
+    }]);
 };
 
 // =========== ดึงรายการสั่งซื้อจาก Hana เพื่ออัพเดตลง Database ===========
@@ -1719,9 +1890,10 @@ exports.getOrderInformationHana = async (req, res, next) => {
 exports.cancelOrderInformationHana = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { order_no, items, action } = req.body[0];
+        let { order_id, action } = req.body[0];
+        let orderIds = Array.isArray(order_id) ? order_id : [order_id];
 
-        if (!order_no || !action) {
+        if (!orderIds || !action) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -1733,99 +1905,117 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
             return;
         }
 
-        // ========== เช็ีคก่อนว่ามี order มั้ย ================
-        // var script_check_sales_order = `SELECT * FROM tbl_order WHERE order_no = '${order_no}'`;
-        // var check_sales_order = await pgConn.get(dbPrefix + lic_code, script_check_sales_order, config.connectionString());
-        // if (!check_sales_order.code && check_sales_order.data.length > 0) {
-        //     let response = [{
-        //         status: 'error',
-        //         invalid_code: '-1',
-        //         message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
-        //         data: [],
-        //         response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-        //     }];
-        //     res.status(200).send(response);
-        //     return;
-        // }
+        // ========== เช็ีคก่อนว่ามี order มั้ย ================ 
+        let payloadData = [];
+        for (let id of order_id) {
+            var script_check_sales_order = `
+                SELECT ti.sales_order_item, tod.order_no
+                FROM tbl_order_item ti
+                INNER JOIN tbl_order tod ON ti.order_no = tod.id
+                WHERE tod.id = ${id} AND tod.order_no IS NOT NULL
+            `;
+            var check_sales_order = await pgConn.get(dbPrefix + lic_code, script_check_sales_order, config.connectionString());
+            // console.log(check_sales_order.data);
 
-        // console.log("check_sales_order.data", check_sales_order.data)
+            if (!check_sales_order.code && check_sales_order.data.length <= 0) {
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-2',
+                    message: 'ไม่พบข้อมูลคำสั่งซื้อ',
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
+                res.status(200).send(response);
+                return;
+            }
 
-        // ================ Construct HANA Payload ==================
-        let itemsArr = [];
-        if (items && Array.isArray(items) && items.length > 0) {
-            itemsArr = items;
-        } else {
-            itemsArr = [{}];
+            let sapItems = [];
+            let order_no = check_sales_order.data[0].order_no;
+            for (let item of check_sales_order.data) {
+                sapItems.push({
+                    "SalesOrderItem": item.sales_order_item,
+                    "SalesDocumentRjcnReason": "85"
+                });
+            }
+
+            payloadData.push({
+                "SalesDocuments": [
+                    {
+                        "SalesOrder": order_no,
+                        "Items": sapItems
+                    }
+                ]
+            });
         }
 
-        console.log(itemsArr)
 
-        let sapItems = itemsArr.map((item, index) => {
-
-            return {
-                "SalesOrderItem": item.SalesOrderItem,
-                "SalesDocumentRjcnReason": "85"
+        const updateStatusOrder = async (payload) => {
+            // console.log('payload', payload);
+            // ================ API Config ==================
+            let axiosConfig = {
+                method: 'post',
+                maxBodyLength: Infinity,
+                url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI022/SOUpdate',
+                headers: {
+                    'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
+                    'Content-Type': 'application/json'
+                },
+                data: payload
             };
-        });
 
-        console.log(sapItems)
+            let order_no = payload.SalesDocuments[0].SalesOrder;
 
-        let payloadData = JSON.stringify({
-            "SalesDocuments": [
-                {
-                    "SalesOrder": order_no,
-                    "Items": sapItems
+            try {
+                let apiResponse = await axios.request(axiosConfig);
+                let status = false;
+                if (apiResponse.data.SalesDocuments[0].MessageType === 'S') {
+                    status = true;
                 }
-            ]
 
-        });
+                let response = [{
+                    status: status ? 'success' : 'error',
+                    invalid_code: '0',
+                    message: status ? 'ขอยกเลิกคำสั่งซื้อ จาก SAP สำเร็จ' : 'ขอยกเลิกคำสั่งซื้อ จาก SAP ไม่สำเร็จ',
+                    data: apiResponse.data,
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
 
+                await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_sap', JSON.stringify({ payload }), 'success', action[0].value);
+                return response;
 
+            } catch (error) {
+                console.log(error);
+                let errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+                let response = [{
+                    status: 'error',
+                    invalid_code: '-2',
+                    message: 'External API Error: ' + errMsg,
+                    data: [],
+                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                }];
 
-        console.log(payloadData)
-
-        // ================ API Config ==================
-        let axiosConfig = {
-            method: 'post',
-            maxBodyLength: Infinity,
-            url: 'https://apiqas-bcp.test01.apimanagement.ap11.hana.ondemand.com:443/v1/Logistics/SDI022/SOUpdate',
-            headers: {
-                'APIKey': 'TRtiSlDe7esbl0lWftGvbEJwY8pfsp86',
-                'Content-Type': 'application/json'
-            },
-            data: payloadData
-        };
-
-        try {
-            let apiResponse = await axios.request(axiosConfig);
-
-            let response = [{
-                status: 'success',
-                invalid_code: '0',
-                message: 'ขอยกเลิกคำสั่งซื้อ จาก SAP',
-                data: apiResponse.data,
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
-
-            await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_sap', JSON.stringify({ order_no, ...JSON.parse(payloadData) }), 'success', action[0].value);
-            return;
-
-        } catch (error) {
-            console.log(error);
-            let errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
-            let response = [{
-                status: 'error',
-                invalid_code: '-2',
-                message: 'External API Error: ' + errMsg,
-                data: [],
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
-
-            await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_error', JSON.stringify({ order_no }), errMsg, action[0].value);
-            return;
+                await xglobal.action_logs(lic_code, action[0].id, 'cancel_order_error', JSON.stringify({ order_no }), errMsg, action[0].value);
+                return response;
+            }
         }
+
+        let response = [];
+        let status = false;
+        for (let item of payloadData) {
+            let res = await updateStatusOrder(item);
+            response.push(res);
+
+            if (res[0].status === 'success') {
+                status = true;
+            }
+        }
+
+        res.status(200).send({
+            status: status ? 'success' : 'error',
+            message: status ? 'ขอยกเลิกคำสั่งซื้อ จาก SAP สำเร็จ' : 'ขอยกเลิกคำสั่งซื้อ จาก SAP ไม่สำเร็จ',
+            data: response,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        });
 
     })().catch(async (err) => {
         console.log(err);
@@ -2509,9 +2699,9 @@ exports.removeOrderInformationById = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { order_no, action } = req.body[0];
+        let { order_id, action } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (order_no == undefined || lic_code == undefined || action == undefined) {
+        if (order_id == undefined || lic_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -2525,11 +2715,11 @@ exports.removeOrderInformationById = async (req, res, next) => {
         } else {
 
             // ดัก id เป็น array
-            let order_noArr = Array.isArray(order_no) ? order_no : [order_no];
-            let order_noIn = order_noArr.map(c => `'${c}'`).join(', ');
+            let order_idArr = Array.isArray(order_id) ? order_id : [order_id];
+            let order_idIn = order_idArr.map(c => `'${c}'`).join(', ');
 
             // ================= เช็ค Validate Status Deli และ Flag =================
-            let scriptCheckStatus = `SELECT id, order_no, status_deli, order_flag FROM tbl_order WHERE id IN (${order_noIn})`;
+            let scriptCheckStatus = `SELECT id, order_no, status_deli, order_flag FROM tbl_order WHERE id IN (${order_idIn})`;
             let status_deli_res = await pgConn.get(dbPrefix + lic_code, scriptCheckStatus, config.connectionString());
 
             if (status_deli_res.code || status_deli_res.data.length === 0) {
@@ -2630,6 +2820,49 @@ exports.removeOrderInformationById = async (req, res, next) => {
                 return;
             }
         }
+
+    })().catch(async (err) => {
+        console.log(err);
+        let response = [{
+            status: 'error',
+            invalid_code: '-4',
+            message: `ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+            data: [],
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+        }]
+        res.status(200).send(response);
+        let event_type = req.body[0].event_type || 'cancel';
+        let logPayload = { id: (req.body[0].id || ""), ...req.body[0] };
+        await xglobal.action_logs(lic_code, action[0].id, event_type, JSON.stringify(logPayload), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        return;
+    });
+
+}
+
+exports.removeOrderInformationById_v2 = async (req, res, next) => {
+
+    return (async () => {
+        let lic_code = req.header('lic_code');
+        let { order_id, action } = req.body[0];
+        //เช็คเฉพาะส่วนที่สำคัญ
+        if (order_id == undefined || lic_code == undefined || action == undefined) {
+            let response = [{
+                status: 'error',
+                invalid_code: '-1',
+                message: 'ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                data: [],
+                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+            }]
+
+            res.status(200).send(response);
+            return;
+        }
+
+        // ดัก id เป็น array
+        let order_idArr = Array.isArray(order_id) ? order_id : [order_id];
+        let order_idIn = order_idArr.map(c => `'${c}'`).join(', ');
+
+        console.log(order_idIn);
 
     })().catch(async (err) => {
         console.log(err);
