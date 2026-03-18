@@ -1634,7 +1634,7 @@ exports.getOrderInformationHana = async (req, res, next) => {
                         console.log(`   ➡️  ไม่เจอออเดอร์ในระบบ (Insert Mode)`);
                         console.log(`   ➕  กำลังสร้าง Order ใหม่จากข้อมูล SAP...`);
 
-                        // ================ เช็คความสมบูรณ์ของข้อมูลก่อน Insert ==================
+                        // ================ Insert ข้อมูลออร์เดอของ SAP ลงใน tbl_order ==================
 
                         let insert_order_script = `INSERT INTO tbl_order
                             (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
