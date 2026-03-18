@@ -126,6 +126,10 @@ exports.getPetrolInformation = async (req, res, next) => {
                         script += ` and tbl_petrol.off_code = '${off_code}'`
                     }
 
+                    if (action[0].value.toString().toUpperCase() != 'ALL') {
+                        script += ` and tbl_petrol.ptrl_code IN (SELECT ptrl_code FROM tbl_employee WHERE emp_code = '${action[0].id}' AND emp_flag = '1') `
+                    }
+
                     if (search != '') {
                         script += ` and (ptrl_number like '%${search}%' 
                         or ptrl_sitecode like '%${search}%' 
