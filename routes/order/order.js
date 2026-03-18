@@ -3225,14 +3225,13 @@ exports.removeOrderInformationById = async (req, res, next) => {
         let script = `SELECT id, order_no, status_deli FROM tbl_order WHERE id IN (${order_idIn});`;
         let rs = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
         let orderData = rs.data;
-        let validIds = [];
-        let skippedIds = [];
+        let dataResponse = [];
 
         orderData.map(async item => {
             if (item.status_deli !== 'A') {
-                skippedIds.push({ order_no: item.order_no, message: 'สถานะถูกวางแผนแล้ว ไม่สามารถลบได้' });
+                dataResponse.push({ order_no: item.order_no, message: 'สถานะถูกวางแผนแล้ว ไม่สามารถลบได้' });
             } else {
-                validIds.push(item.order_no);
+                dataResponse.push({ order_no: item.order_no, message: 'ลบข้อมูล Order สำเร็จ' });
 
                 let script = `
                     update tbl_order set order_flag = '0', rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
@@ -3246,7 +3245,7 @@ exports.removeOrderInformationById = async (req, res, next) => {
             status: 'success',
             invalid_code: '0',
             message: 'ลบข้อมูล Order สำเร็จ',
-            data: [],
+            data: dataResponse,
             response_time: moment().format('YYYY-MM-DD HH:mm:ss')
         }]
 
