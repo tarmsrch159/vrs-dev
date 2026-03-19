@@ -22,7 +22,7 @@ router.post('/confirm/information', order.getConfirmOrder);
 router.post('/order-hana/information', order.getOrderInformationHana);
 router.post('/cancel-hana/information', order.cancelOrderInformationHana);
 
-// ============= Order type =============
+// ============= Order type ==============
 router.post('/type/information', order_type.getOrderTypeInformation);
 router.put('/type/information', order_type.addOrderType);
 router.patch('/type/information', order_type.setOrderType);

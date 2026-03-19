@@ -5,8 +5,6 @@ const xglobal = require('../../middleware/global');
 
 const dbPrefix = config.dbPrefix();
 
-//example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
-
 // ========== ดึงข้อมูลประเภท Order (API) ==========
 exports.getOrderTypeInformation = async (req, res, next) => {
 
@@ -121,7 +119,6 @@ exports.getOrderTypeInformation = async (req, res, next) => {
         return;
     });
 }
-
 
 // ========== เพิ่มข้อมูลประเภทการสั่งซื้อ ==========
 exports.addOrderType = async (req, res, next) => {
@@ -253,7 +250,6 @@ exports.addOrderType = async (req, res, next) => {
 
 }
 
-
 // ========== แก้ไขข้อมูลประเภทการสั่งซื้อ ==========
 exports.setOrderType = async (req, res, next) => {
 
@@ -338,8 +334,6 @@ exports.setOrderType = async (req, res, next) => {
     });
 
 }
-
-
 
 // ========== ลบข้อมูลประเภทการสั่งซื้อ (Soft Delete) ==========
 exports.removeOrderType = async (req, res, next) => {
