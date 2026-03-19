@@ -1,11 +1,8 @@
 const config = require('../../configuration/connection');
 const pgConn = require('../../library/pgConnection');
-// const moment = require('moment/ts3.1-typings/moment');
 const moment = require('moment');
 const axios = require('axios');
-
 const xglobal = require('../../middleware/global');
-
 const dbPrefix = config.dbPrefix();
 
 // =========== ดึงข้อมูลรายการสั่งซื้อ ===========
@@ -849,7 +846,7 @@ exports.getOrderReport = async (req, res, next) => {
                 tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
                 // =========================================================
-                //   Query หาจำนวนแถวทั้งหมดแบบคำนึงถึง Group By (Count Rows)
+                //   Query หาจำนวนแถวทั้งหมด
                 // =========================================================
                 let countScript = `
                     SELECT 
@@ -2513,6 +2510,8 @@ exports.setOrderInformation = async (req, res, next) => {
             return;
         } else {
 
+
+            // =========== ตรวจสอบ Order No. ถ้ามีใช้ ข้อมูลเดิม ===========
             let scriptCheckOrderNo = `SELECT * FROM tbl_order WHERE order_id = '${order_no}'`;
             let checkOrderNo = await pgConn.get(dbPrefix + lic_code, scriptCheckOrderNo, config.connectionString());
             if (checkOrderNo.code || checkOrderNo.data.length == 0) {
@@ -2586,7 +2585,7 @@ exports.setOrderInformation = async (req, res, next) => {
                 return;
             }
 
-            // Step 2: UPDATE tbl_order_item (item_quantity)
+            // ============= UPDATE tbl_order_item (item_quantity) =================
             if (order_item && Array.isArray(order_item) && order_item.length > 0) {
                 // Collect all items to update
                 let itemsToUpdate = [];
@@ -2671,6 +2670,7 @@ exports.setOrderInformation = async (req, res, next) => {
         res.status(200).send(response);
     });
 };
+
 
 // =========== แก้ไขรายการน้ำมันย่อย ===========
 exports.editOrderItem = async (req, res, next) => {
@@ -3150,7 +3150,7 @@ exports.reCreateOrderInformation = async (req, res, next) => {
 
                 // ============ ดึงข้อมูล Order ต้นฉบับ ============
                 let script_get_order = `SELECT * FROM tbl_order WHERE id = $1`;
-                let old_order_res = await pgConn.execute2params(dbPrefix + lic_code, script_get_order, [currentId], config.connectionString());
+                let old_order_res = await pgConn.execute2params(script_get_order, [currentId]);
 
                 if (old_order_res.code || old_order_res.data.length === 0) {
                     console.log(`⚠️ ไม่พบข้อมูล Order ต้นฉบับ ID: ${currentId}`);
@@ -3163,7 +3163,7 @@ exports.reCreateOrderInformation = async (req, res, next) => {
 
                 // ============ ดึงข้อมูลรายการสินค้า (Items) ทั้งหมดจาก Order ต้นฉบับ ============
                 let script_get_items = `SELECT * FROM tbl_order_item WHERE order_no = $1 AND order_item_flag = '1'`;
-                let old_items_res = await pgConn.execute2params(dbPrefix + lic_code, script_get_items, [currentId.toString()], config.connectionString());
+                let old_items_res = await pgConn.execute2params(script_get_items, [currentId.toString()]);
                 let order_items = old_items_res.data || [];
 
                 // ============ สร้าง sh_cus_ref ใหม่ตามรูปแบบ AOS + YYYYMMDD + Running Number ============
@@ -3192,8 +3192,6 @@ exports.reCreateOrderInformation = async (req, res, next) => {
                 }
 
                 let new_sh_cus_ref = 'AOS' + req_date_str + String(running_number).padStart(4, '0');
-
-
 
 
                 // ============ สร้าง Order ใหม่ ============ 
