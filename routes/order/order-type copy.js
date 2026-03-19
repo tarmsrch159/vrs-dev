@@ -5,17 +5,15 @@ const xglobal = require('../../middleware/global');
 
 const dbPrefix = config.dbPrefix();
 
-// ========== ดึงข้อมูลประเภท Order (API) ==========
+//example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.getOrderTypeInformation = async (req, res, next) => {
 
     var xresult = [];
 
     return (async () => {
-        // ========== ดึงข้อมูลสำคัญจาก Header และ Reqeust Body ==========
         let lic_code = req.header('lic_code');
-        let { ord_type_code, action } = req.body[0] || {};
-
-        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
+        let { ord_type_code, action } = req.body[0];
+        //เช็คเฉพาะส่วนที่สำคัญ
         if (ord_type_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -23,83 +21,71 @@ exports.getOrderTypeInformation = async (req, res, next) => {
                 message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
+            }]
+
             res.status(200).send(response);
-            return;
-        }
-
-        // ========== จัดการเงื่อนไข WHERE ==========
-        let conditions = ["tbl_order_type.ord_type_flag = '1'"];
-
-        if (ord_type_code.toString().toUpperCase() != 'ALL') {
-            conditions.push(`tbl_order_type.ord_type_code = '${ord_type_code}'`);
         } else {
-            conditions.push(`tbl_order_type.ord_type_code IS NOT NULL`);
-        }
 
-        let whereClause = "WHERE " + conditions.join(" AND ");
+            let script = ``;
+            if (ord_type_code.toString().toUpperCase() != 'ALL') {
+                script = `select tbl_order_type.ord_type_code, tbl_order_type.sales_order_type,tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
+                tbl_order_type.mdf_dt, tbl_order_type.rm_dt 
 
-        // ========== ประกอบ Query ==========
-        let script = `
-            SELECT 
-                tbl_order_type.ord_type_code, 
-                tbl_order_type.sales_order_type,
-                tbl_order_type.ord_type_desc, 
-                tbl_order_type.ord_type_flag, 
-                tbl_order_type.ist_dt, 
-                tbl_order_type.mdf_dt, 
-                tbl_order_type.rm_dt 
-            FROM tbl_order_type
-            ${whereClause}
-            ORDER BY tbl_order_type.ord_type_desc ASC;
-        `;
+                from tbl_order_type
+                where tbl_order_type.ord_type_code = '${ord_type_code}' and tbl_order_type.ord_type_flag = '1'`;
+            }
+            else {
+                script = `select tbl_order_type.ord_type_code, tbl_order_type.sales_order_type,tbl_order_type.ord_type_desc, tbl_order_type.ord_type_flag, tbl_order_type.ist_dt, 
+                tbl_order_type.mdf_dt, tbl_order_type.rm_dt 
 
-        // ========== ดึงข้อมูลจาก Database ==========
-        let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+                from tbl_order_type
+                where tbl_order_type.ord_type_code is not null and tbl_order_type.ord_type_flag = '1'`;
+            }
 
-        if (!tbl_temporary.code) {
+            script += ` order by tbl_order_type.ord_type_desc asc;`
 
-            if (tbl_temporary.data.length > 0) {
-                tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
+            let tbl_temporary = await pgConn.get(dbPrefix + lic_code, script, config.connectionString());
+            if (!tbl_temporary.code) {
+                //debugger
+                if (tbl_temporary.data.length > 0) {
+                    tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
-                let response = [{
-                    status: 'success',
-                    invalid_code: '0',
-                    message: '',
-                    data: tbl_temporary.data,
-                    response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-                }];
-                res.status(200).send(response);
-                return;
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: tbl_temporary.data,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                } else {
+                    let response = [{
+                        status: 'success',
+                        invalid_code: '0',
+                        message: '',
+                        data: xresult,
+                        response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+                    }]
+
+                    res.status(200).send(response);
+                    return;
+                }
             } else {
                 let response = [{
-                    status: 'success',
-                    invalid_code: '0',
-                    message: '',
+                    status: 'error',
+                    invalid_code: '-3',
+                    message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
                     data: xresult,
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-                }];
+                }]
                 res.status(200).send(response);
+                await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลรถและหางลาก', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
                 return;
             }
-        } else {
-
-            let response = [{
-                status: 'error',
-                invalid_code: '-3',
-                message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
-                data: xresult,
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
-
-
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลประเภท Order', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
-            return;
         }
-
     })().catch(async (err) => {
-
         console.log(err);
         let response = [{
             status: 'error',
@@ -107,20 +93,15 @@ exports.getOrderTypeInformation = async (req, res, next) => {
             message: `ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
             data: xresult,
             response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
-        }];
+        }]
         res.status(200).send(response);
-
-        let lic_code = req.header('lic_code');
-        let action = req.body && req.body[0] ? req.body[0].action : null;
-        if (lic_code && action) {
-
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลประเภท Order', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
-        }
+        await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลรถและหางลาก', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
         return;
     });
 }
 
-// ========== เพิ่มข้อมูลประเภทการสั่งซื้อ ==========
+
+// =========== เพิ่มข้อมูลประเภทการสั่งซื้อ ===========
 exports.addOrderType = async (req, res, next) => {
 
     return (async () => {
@@ -130,7 +111,7 @@ exports.addOrderType = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ========== เช็คข้อมูลพารามิเตอร์ที่ส่งมา ==========
+        // เช็คเฉพาะส่วนที่สำคัญ
         if (ord_type_desc == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -146,7 +127,7 @@ exports.addOrderType = async (req, res, next) => {
         let isDescValid = false;
         let descList = [];
 
-        // ========== ตรวจสอบและจัดรูปแบบข้อมูลประเภทการสั่งซื้อ ==========
+        // ======== เช็คข้อมูลประเภทการสั่งซื้อ ==========
         if (typeof ord_type_desc === 'object' && !Array.isArray(ord_type_desc) && Array.isArray(ord_type_desc.desc) && ord_type_desc.desc.length > 0) {
             descList = ord_type_desc.desc;
             isDescValid = true;
@@ -158,7 +139,7 @@ exports.addOrderType = async (req, res, next) => {
             isDescValid = true;
         }
 
-        // ========== ตรวจสอบความถูกต้องของข้อมูล (Validation) ==========
+        // ======= เช็คข้อมูลประเภทการสั่งซื้อ ========== 
         if (!isDescValid) {
             let response = [{
                 status: 'error',
@@ -176,12 +157,11 @@ exports.addOrderType = async (req, res, next) => {
 
         var script = ``;
 
-        // ========== วนลูปเพื่อบันทึกข้อมูลประเภทการสั่งซื้อใหม่ ==========
+        // ============ Loop เพิ่มข้อมูลประเภทการสั่งซื้อ ============
         for (var i = 0; i < descList.length; i++) {
             let desc_value = descList[i];
             if (!desc_value || desc_value.trim() === '') continue;
 
-            // ========== ตรวจสอบว่ามีข้อมูลประเภทการสั่งซื้อที่ซ้ำกันหรือไม่ (Duplicate Check) ==========
             let check_script = `SELECT ord_type_desc FROM tbl_order_type WHERE ord_type_desc = '${desc_value.replace(/'/g, "''")}' AND ord_type_flag = '1';`
             console.log(check_script)
             let check_tbl_temporary = await pgConn.get(dbPrefix + lic_code, check_script, config.connectionString());
@@ -202,10 +182,9 @@ exports.addOrderType = async (req, res, next) => {
             let ord_type_code = `otyp-${moment().format('x')}${i}`
             script = `INSERT INTO tbl_order_type 
             (ord_type_code, ord_type_desc, ord_type_flag, ist_dt, mdf_dt, rm_dt) 
-            VALUES ($1, $2, '1', $3, NULL, NULL);`
+            VALUES ('${ord_type_code}', '${desc_value.replace(/'/g, "''")}', '1', '${moment().format('YYYY-MM-DD HH:mm:ss')}', NULL, NULL);`
 
-            // ========== บันทึกข้อมูลประเภทการสั่งซื้อใหม่ลงใน Database (Execute Query) ==========
-            let tbl_temporary = await pgConn.execute2params(script, [ord_type_code, desc_value.replace(/'/g, "''"), moment().format('YYYY-MM-DD HH:mm:ss')]);
+            let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
 
             if (tbl_temporary.code) {
                 let response = [{
@@ -222,7 +201,7 @@ exports.addOrderType = async (req, res, next) => {
             }
         }
 
-        // ========== ส่งผลลัพธ์การบันทึกข้อมูลสำเร็จ ==========
+        // ============ Success response ============
         let response = [{
             status: 'success',
             invalid_code: '0',
@@ -250,7 +229,8 @@ exports.addOrderType = async (req, res, next) => {
 
 }
 
-// ========== แก้ไขข้อมูลประเภทการสั่งซื้อ ==========
+
+// =========== แก้ไขข้อมูลประเภทการสั่งซื้อ ===========
 exports.setOrderType = async (req, res, next) => {
 
     return (async () => {
@@ -261,7 +241,7 @@ exports.setOrderType = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ========== เช็คข้อมูลพารามิเตอร์ที่ส่งมา ==========
+        // เช็คเฉพาะส่วนที่สำคัญ
         if (ord_type_code == undefined || ord_type_desc == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -275,7 +255,6 @@ exports.setOrderType = async (req, res, next) => {
             return;
         }
 
-        // ========== ตรวจสอบว่าชื่อประเภทการสั่งซื้อใหม่มีอยู่แล้วหรือไม่ (Duplicate Check) ==========
         let check_script = `SELECT ord_type_desc FROM tbl_order_type WHERE ord_type_desc = '${ord_type_desc.replace(/'/g, "''")}' AND ord_type_flag = '1';`
         let check_tbl_temporary = await pgConn.get(dbPrefix + lic_code, check_script, config.connectionString());
         if (check_tbl_temporary.code || check_tbl_temporary.data.length > 0) {
@@ -292,9 +271,9 @@ exports.setOrderType = async (req, res, next) => {
         }
 
 
-        let script = `UPDATE tbl_order_type SET ord_type_desc = $1, mdf_dt = $2 WHERE ord_type_code = $3 AND ord_type_flag = '1';`
+        let script = `UPDATE tbl_order_type SET ord_type_desc = '${ord_type_desc.replace(/'/g, "''")}', mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE ord_type_code = '${ord_type_code}' AND ord_type_flag = '1';`
 
-        let tbl_temporary = await pgConn.execute2params(script, [ord_type_desc.replace(/'/g, "''"), moment().format('YYYY-MM-DD HH:mm:ss'), ord_type_code]);
+        let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
         if (tbl_temporary.code) {
             let response = [{
                 status: 'error',
@@ -307,7 +286,7 @@ exports.setOrderType = async (req, res, next) => {
             return;
         }
 
-        // ========== ส่งผลลัพธ์การแก้ไขข้อมูลสำเร็จ ==========
+        // ============ Success response ============
         let response = [{
             status: 'success',
             invalid_code: '0',
@@ -335,7 +314,9 @@ exports.setOrderType = async (req, res, next) => {
 
 }
 
-// ========== ลบข้อมูลประเภทการสั่งซื้อ (Soft Delete) ==========
+
+
+// =========== ลบข้อมูลประเภทการสั่งซื้อ ===========
 exports.removeOrderType = async (req, res, next) => {
 
     return (async () => {
@@ -345,7 +326,7 @@ exports.removeOrderType = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ========== เช็คข้อมูลพารามิเตอร์ที่ส่งมา ==========
+        // เช็คเฉพาะส่วนที่สำคัญ
         if (ord_type_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -359,7 +340,6 @@ exports.removeOrderType = async (req, res, next) => {
             return;
         }
 
-        // ========== จัดการรูปแบบข้อมูลรหัสประเภทการสั่งซื้อเพื่อใช้ใน IN clause ==========
         let order_type_codeArr = Array.isArray(ord_type_code) ? ord_type_code : [ord_type_code];
         let order_type_codeIn = order_type_codeArr.map(c => `'${c}'`).join(', ');
 
@@ -379,7 +359,7 @@ exports.removeOrderType = async (req, res, next) => {
             return;
         }
 
-        // ========== ส่งผลลัพธ์การลบข้อมูลสำเร็จ ==========
+        // ============ Success response ============
         let response = [{
             status: 'success',
             invalid_code: '0',

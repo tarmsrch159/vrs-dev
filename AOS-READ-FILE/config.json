@@ -1,0 +1,11 @@
+{
+    "environment": "test",
+    "test": {
+        "baseSourceFolder": "/Users/tanachai_ho/AOS-Test",
+        "baseArchiveFolder": "/Users/tanachai_ho/AOS-BACKUP"
+    },
+    "production": {
+        "baseSourceFolder": "/Production/AOS-Test",
+        "baseArchiveFolder": "/Production/AOS-BACKUP"
+    }
+}

@@ -359,6 +359,7 @@ exports.getPetrolMergeJobDetails = async (req, res, next) => {
 
 }
 
+// ========= Success =========
 exports.getPetrolMergeJobDetailsV2 = async (req, res, next) => {
     var xresult = [];
 
