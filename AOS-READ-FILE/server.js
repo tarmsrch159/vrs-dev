@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.API_PORT || 5555;
+const PORT = process.env.API_PORT || 9102;
 
 // Middleware
 app.use(express.json());
