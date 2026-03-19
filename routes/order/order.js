@@ -16,12 +16,13 @@ exports.getOrderInformation = async (req, res, next) => {
         let { order_no, start_date, end_date, order_type, order_status, auto_order, status_deli,
             search, page_index, page_limit, action } = req.body[0];
 
+        // ======== กำหนดค่าเริ่มต้นให้กับพารามิเตอร์ที่ไม่ได้ส่งมา ========
         page_index = page_index === undefined ? 1 : page_index;
         page_limit = page_limit === undefined ? 10 : page_limit;
         auto_order = auto_order === undefined ? 'ALL' : auto_order;
         status_deli = status_deli === undefined ? 'ALL' : status_deli;
 
-        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
+        // ======== ตรวจสอบความถูกต้องของพารามิเตอร์ที่จำเป็น ========
         if (start_date === undefined || end_date === undefined ||
             order_type === undefined || order_status === undefined ||
             search === undefined || action === undefined) {
@@ -37,14 +38,12 @@ exports.getOrderInformation = async (req, res, next) => {
             return;
         }
 
-        // ========== เตรียมข้อมูลสำหรับ Pagination และ Dates ==========
+        // ======== ปรับรูปแบบข้อมูล Pagination และช่วงเวลา (Date) ให้พร้อมใช้งาน ========
         if (page_index > 0) page_index -= 1;
         if (start_date.length === 10) start_date += ' 00:00:00';
         if (end_date.length === 10) end_date += ' 23:59:59';
 
-        // =========================================================
-        // จัดการเงื่อนไข WHERE (Dynamic Conditions)
-        // =========================================================
+        // ======== สร้างเงื่อนไข WHERE สำหรับกรองข้อมูลตามที่ผู้ใช้ระบุมา (Dynamic Conditions) ========
         let conditions = ["tbl_order.rm_dt IS NULL"];
 
         if (order_no.toString().toUpperCase() !== 'ALL') {
@@ -65,6 +64,7 @@ exports.getOrderInformation = async (req, res, next) => {
         if (action[0].value.toString().toUpperCase() !== 'ALL') {
             conditions.push(`tbl_order.created_by_tms = '${action[0].id}'`);
         }
+        // ======== เพิ่มเงื่อนไขการค้นหาข้อความ (Search) แบบครอบคลุมหลายฟิลด์ ========
         if (search !== '') {
             conditions.push(`(
                 tbl_order.order_no LIKE '%${search}%' 
@@ -78,12 +78,10 @@ exports.getOrderInformation = async (req, res, next) => {
             conditions.push(`tbl_order.ist_dt >= '${start_date}' AND tbl_order.ist_dt <= '${end_date}'`);
         }
 
-        // WhereClause
+        // ======== รวมเงื่อนไขทั้งหมด WHERE Clause ========
         let whereClause = "WHERE " + conditions.join(" AND ");
 
-        // =========================================================
-        //          Query ดึงข้อมูลหลัก (Main Data)
-        // =========================================================
+        // ======== เตรียมคำสั่ง SQL หลักสำหรับดึงข้อมูลออเดอร์และ Join ตารางที่เกี่ยวข้อง ========
         let baseSelectQuery = `
             SELECT 
                 tbl_order.id, tbl_order.order_no, tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
@@ -111,6 +109,7 @@ exports.getOrderInformation = async (req, res, next) => {
             ) tbl_sum_item ON TRIM(CAST(tbl_order.id AS TEXT)) = tbl_sum_item.order_no_text
         `;
 
+        // ======== รวมคำสั่ง SQL พร้อมเพิ่ม Pagination เพื่อจำกัดจำนวนข้อมูล ========
         let dataScript = `
             ${baseSelectQuery}
             ${whereClause}
@@ -118,15 +117,15 @@ exports.getOrderInformation = async (req, res, next) => {
             OFFSET (${page_index} * ${page_limit}) LIMIT ${page_limit};
         `;
 
+        // ======== Query เพื่อดึงข้อมูลหลัก ========
         let tbl_temporary = await pgConn.get(dbPrefix + lic_code, dataScript, config.connectionString());
 
         if (!tbl_temporary.code) {
             if (tbl_temporary.data.length > 0) {
+                // ======== แปลงค่า null ให้เป็น string ว่าง ("") ในข้อมูล JSON ========
                 tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
-                // =========================================================
-                //           Query หาจำนวนแถวทั้งหมด (Count Rows)
-                // =========================================================
+                // ======== เตรียมคำสั่ง SQL สำหรับคำนวณจำนวนแถวทั้งหมดและจำนวนหน้า (Total Rows & Pages) ========
                 let countScript = `
                     SELECT 
                         CEIL((CEIL(SUM(rows_total)) / ${page_limit})) as page_total, 
@@ -137,15 +136,18 @@ exports.getOrderInformation = async (req, res, next) => {
                     ) xtbl_master;
                 `;
 
+                // ======== ยิง Query เพื่อนับจำนวนแถวและหน้า ========
                 let tbl_temporary0 = await pgConn.get(dbPrefix + lic_code, countScript, config.connectionString());
 
                 let page_total = 0;
                 let rows_total = 0;
 
+                // ======== ดึงค่า Total Pages และ Total Rows ที่คำนวณได้ ========
                 if (!tbl_temporary0.code && tbl_temporary0.data.length > 0) {
                     page_total = parseInt(tbl_temporary0.data[0].page_total);
                     rows_total = parseInt(tbl_temporary0.data[0].rows_total);
                 }
+
 
                 let response = [{
                     status: 'success',
@@ -196,8 +198,7 @@ exports.getOrderInformation = async (req, res, next) => {
     });
 }
 
-
-// =========== ดึงข้อมูลรายการสั่งซื้อ By ID ===========
+// ======== ดึงข้อมูลรายละเอียดของออเดอร์ตาม ID ที่ระบุ ========
 exports.getOrderInformationByID = async (req, res, next) => {
 
     var xresult = [];
@@ -207,7 +208,7 @@ exports.getOrderInformationByID = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { id, action } = req.body[0];
 
-        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
+        // ======== ตรวจสอบว่ามีการส่งพารามิเตอร์ที่จำเป็น ========
         if (id == undefined || action == undefined) {
             let response = [{
                 status: 'error',
@@ -220,7 +221,7 @@ exports.getOrderInformationByID = async (req, res, next) => {
             return;
         }
 
-        // ========== Query ข้อมูล Order หลัก ==========
+        // ======== คำสั่ง SQL สำหรับดึงข้อมูลของออเดอร์ พร้อม Join ข้อมูลพื้นฐานที่เกี่ยวข้อง ========
         let orderScript = `SELECT 
             tbl_order.id, tbl_order.order_no, tbl_order.sh_cus_ref as aos_order_no, tbl_order.order_type, tbl_order.order_group, 
             tbl_order_type.ord_type_desc,
@@ -245,6 +246,7 @@ exports.getOrderInformationByID = async (req, res, next) => {
 
         let orderResult = await pgConn.get(dbPrefix + lic_code, orderScript, config.connectionString());
 
+        // ======== จัดการกรณีเกิดข้อผิดพลาดในการรัน Query ========
         if (orderResult.code) {
             let response = [{
                 status: 'error',
@@ -257,6 +259,7 @@ exports.getOrderInformationByID = async (req, res, next) => {
             return;
         }
 
+        // ======== จัดการกรณี Query สำเร็จ แต่ไม่พบข้อมูลออเดอร์ตาม ID ที่ส่งมา ========
         if (orderResult.data.length === 0) {
             let response = [{
                 status: 'success',
@@ -269,9 +272,10 @@ exports.getOrderInformationByID = async (req, res, next) => {
             return;
         }
 
+        // ======== แปลงข้อมูล null ให้เป็นค่าว่าง (String ว่าง) ========
         let orderData = JSON.parse(JSON.stringify(orderResult.data[0]).replace(/\:null/gi, "\:\"\""));
 
-        // ========== Query ข้อมูล Order Items (น้ำมัน) ==========
+        // ======== คำสั่ง SQL สำหรับดึงรายการสินค้า (Items) ที่อยู่ในออเดอร์นี้ ========
         let itemScript = `SELECT 
             tbl_order_item.id, tbl_order_item.order_no, tbl_order_item.item_no,
             tbl_petrol_tank.tnk_number as tank_number,
@@ -291,13 +295,14 @@ exports.getOrderInformationByID = async (req, res, next) => {
             AND tbl_order_item.order_item_flag = '1'
             ORDER BY tbl_order_item.id ASC`;
 
+        // ======== ยิง Query เพื่อดึงรายการสินค้า (Items) และจัดการข้อมูล null ========
         let itemResult = await pgConn.get(dbPrefix + lic_code, itemScript, config.connectionString());
         let orderItems = [];
         if (!itemResult.code && itemResult.data.length > 0) {
             orderItems = JSON.parse(JSON.stringify(itemResult.data).replace(/\:null/gi, "\:\"\""));
         }
 
-        // ========== Return Success Response ==========
+        // ======== ส่ง Response กลับไปให้ Client ========
         let response = [{
             status: 'success',
             invalid_code: '0',
@@ -322,7 +327,6 @@ exports.getOrderInformationByID = async (req, res, next) => {
         res.status(200).send(response);
     });
 }
-
 
 // =========== ดึงข้อมูลรายงานการสั่งซื้อ ===========
 exports.getOrderReportInformation = async (req, res, next) => {
