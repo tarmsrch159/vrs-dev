@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const ftp = require('basic-ftp');
 const fs = require('fs');
 const pool = require('../db');
+const appConfig = require('../config.json');
 
 
 // ============================================================
@@ -270,8 +271,8 @@ async function processOneConfig(ftpConfig) {
 
         console.log(`✅ เชื่อมต่อ ${ftpConfig.config_name} สำเร็จ! (FTP)`);
 
-        const baseSourceFolder = '/Bombel2man/AOS-Test';
-        const baseArchiveFolder = '/Bombel2man/AOS-BACKUP';
+        const env = appConfig.environment || 'test';
+        const { baseSourceFolder, baseArchiveFolder } = appConfig[env];
 
         // สร้างวันที่ YYYY-MM-DD รอไว้เลย (เช่น 2026-03-06)
         const today = new Date();
