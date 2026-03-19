@@ -198,7 +198,7 @@ exports.getOrderInformation = async (req, res, next) => {
     });
 }
 
-// ======== ดึงข้อมูลรายละเอียดของออเดอร์ตาม ID ที่ระบุ ========
+// =========== ดึงข้อมูลรายละเอียดของออเดอร์ตาม ID ที่ระบุ ========
 exports.getOrderInformationByID = async (req, res, next) => {
 
     var xresult = [];
@@ -2190,7 +2190,7 @@ exports.getOrderRunout = async (req, res, next) => {
 
 }
 
-// =========== เพิ่มข้อมูลรายการสั่งซื้อ ===========
+// =========== เพิ่มข้อมูลรายการสั่งซื้อ =============
 exports.addOrderInformation = async (req, res, next) => {
 
     return (async () => {
@@ -2809,7 +2809,7 @@ exports.editOrderItem = async (req, res, next) => {
     });
 };
 
-//============== Approve Order Status Deli ==============
+// =========== Approve Order Status Deli ===========
 exports.setStatusDeli = async (req, res, next) => {
 
     return (async () => {
@@ -3048,6 +3048,7 @@ exports.removeOrderInformationById_bk = async (req, res, next) => {
 
 }
 
+// ============= ลบข้อมูลออเดอร์ =============
 exports.removeOrderInformationById = async (req, res, next) => {
 
     return (async () => {
