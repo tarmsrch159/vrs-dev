@@ -365,7 +365,7 @@ exports.getPetrolMergeJobDetailsV2 = async (req, res, next) => {
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { ptrl_code, action, page_index, page_limit } = req.body[0];
+        let { ptrl_code, action, search, page_index, page_limit } = req.body[0];
 
         const page = parseInt(page_index) || 1;
         const limit = parseInt(page_limit) || 10;
@@ -393,10 +393,20 @@ exports.getPetrolMergeJobDetailsV2 = async (req, res, next) => {
             "tbl_ptrl.ptrl_flag = '1'"
         ];
 
-
-
         if (ptrl_code.toString().toUpperCase() !== 'ALL') {
             conditions.push(`tbl_petrol_merge_job.ptrl_code = '${ptrl_code}'`);
+        }
+
+        if (search) {
+            conditions.push(`(
+                tbl_petrol_merge_job_info.ptrl_merge_job_code LIKE '%${search}%' 
+                OR tbl_ptrl.ptrl_desc LIKE '%${search}%' 
+                OR tbl_ptrl.ptrl_number LIKE '%${search}%' 
+                OR tbl_merge_ptrl.ptrl_desc LIKE '%${search}%' 
+                OR tbl_merge_ptrl.ptrl_number LIKE '%${search}%' 
+                OR tbl_item.itm_desc LIKE '%${search}%' 
+                OR tbl_depot.dpo_desc LIKE '%${search}%'
+            )`);
         }
 
         let whereClause = "WHERE " + conditions.join(" AND ");
