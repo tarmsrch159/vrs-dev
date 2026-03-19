@@ -3114,173 +3114,303 @@ exports.removeOrderInformationById = async (req, res, next) => {
 
 }
 
-
-// =========== สร้างรายการสั่งซื้อใหม่ ===========
+// =========== สร้างรายการสั่งซื้อใหม่ (Re-create Order) ===========
 exports.reCreateOrderInformation = async (req, res, next) => {
+    try {
+        const lic_code = req.header('lic_code');
+        const payload = req.body[0] || {};
+        const { id, action } = payload;
 
-    return (async () => {
-        let lic_code = req.header('lic_code');
-        let {
-            id,
-            action
-        } = req.body[0];
-
-        // เช็คเฉพาะส่วนที่สำคัญ
-        if (id == undefined || action == undefined) {
-            let response = [{
+        // ====================== เช็คข้อมูลที่ต้องใช้ ======================
+        if (id === undefined || action === undefined) {
+            return res.status(200).send([{
                 status: 'error',
                 invalid_code: '-1',
                 message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }]
-
-            res.status(200).send(response);
-            return;
+            }]);
         }
 
-        try {
+        const idList = Array.isArray(id) ? id : [id];
+        const newOrders = [];
+        const currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
+        const req_date_str = moment().format('YYYYMMDD');
 
-            let idList = Array.isArray(id) ? id : [id];
-            let newOrders = [];
+        // ====================== ดึงเลข MAX ตัวล่าสุดของวัน ======================
+        let scriptCheckShCusRef = `
+            SELECT MAX(CAST(SUBSTRING(sh_cus_ref FROM 12) AS INTEGER)) as last_running 
+            FROM public.tbl_order 
+            WHERE sh_cus_ref LIKE 'AOS${req_date_str}%' AND sh_cus_ref ~ '^AOS[0-9]{8}[0-9]+$'
+        `;
+        let checkShCusRefResult = await pgConn.get(dbPrefix + lic_code, scriptCheckShCusRef, config.connectionString());
 
-            for (let i = 0; i < idList.length; i++) {
-                let currentId = idList[i];
-                if (!currentId) continue;
+        let running_number = 1;
+        if (!checkShCusRefResult.code && checkShCusRefResult.data.length > 0 && checkShCusRefResult.data[0].last_running !== null) {
+            running_number = parseInt(checkShCusRefResult.data[0].last_running) + 1;
+        }
 
-                // ============ ดึงข้อมูล Order ต้นฉบับ ============
-                let script_get_order = `SELECT * FROM tbl_order WHERE id = $1`;
-                let old_order_res = await pgConn.execute2params(script_get_order, [currentId]);
+        // ====================== วนลูปสร้าง Order ใหม่ ======================
+        for (const currentId of idList) {
+            if (!currentId) continue;
 
-                if (old_order_res.code || old_order_res.data.length === 0) {
-                    console.log(`⚠️ ไม่พบข้อมูล Order ต้นฉบับ ID: ${currentId}`);
-                    continue;
-                }
+            // ====================== ดึงข้อมูล Order เดิม ======================
+            const scriptGetOrder = `SELECT * FROM tbl_order WHERE id = ${currentId}`;
+            const oldOrderRes = await pgConn.get(dbPrefix + lic_code, scriptGetOrder, config.connectionString());
 
-                let oldOrder = old_order_res.data[0];
+            if (oldOrderRes.code || !oldOrderRes.data || oldOrderRes.data.length === 0) continue;
+            const oldOrder = oldOrderRes.data[0];
 
-                console.log(oldOrder.order_no);
+            // ====================== ดึง Item เดิม ======================
+            const order_no_to_check = oldOrder.order_id || oldOrder.order_no || currentId;
+            const scriptGetItems = `SELECT * FROM tbl_order_item WHERE order_no = '${order_no_to_check}' AND order_item_flag = '1'`;
+            const oldItemsRes = await pgConn.get(dbPrefix + lic_code, scriptGetItems, config.connectionString());
+            const order_items = (!oldItemsRes.code && oldItemsRes.data) ? oldItemsRes.data : [];
 
-                // ============ ดึงข้อมูลรายการสินค้า (Items) ทั้งหมดจาก Order ต้นฉบับ ============
-                let script_get_items = `SELECT * FROM tbl_order_item WHERE order_no = $1 AND order_item_flag = '1'`;
-                let old_items_res = await pgConn.execute2params(script_get_items, [currentId.toString()]);
-                let order_items = old_items_res.data || [];
+            // ====================== สร้าง Reference ใหม่ตามรอบลูป ======================
+            const current_sh_cus_ref = 'AOS' + req_date_str + String(running_number).padStart(4, '0');
+            running_number++;
 
-                // ============ สร้าง sh_cus_ref ใหม่ตามรูปแบบ AOS + YYYYMMDD + Running Number ============
-                let req_date_str = moment().format('YYYYMMDD');
-                let script_check_sh_cus_ref = `
-                    SELECT MAX(CAST(SUBSTRING(sh_cus_ref FROM 12) AS INTEGER)) as last_running 
-                    FROM tbl_order 
-                    WHERE sh_cus_ref LIKE $1 AND sh_cus_ref ~ '^AOS[0-9]{8}[0-9]+$'
-                `;
-                let check_sh_res = await pgConn.execute2params(script_check_sh_cus_ref, ['AOS' + req_date_str + '%'], config.connectionString());
+            // ====================== Insert Order ใหม่ ======================
+            const insertOrderScript = `
+                INSERT INTO tbl_order (
+                    order_type, order_group, chanel, division, sold_to, ship_to,
+                    cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+                    deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+                    status_deli, ist_dt, order_flag, auto_order, order_status
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
+                    $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 
+                    $21, $22
+                ) RETURNING id`;
 
-                let running_number = 1;
-                if (!check_sh_res.code && check_sh_res.data.length > 0 && check_sh_res.data[0].last_running !== null) {
-                    running_number = parseInt(check_sh_res.data[0].last_running) + 1;
-                }
+            const paramsOrder = [
+                oldOrder.order_type || '', oldOrder.order_group || '', oldOrder.chanel || '', oldOrder.division || '',
+                oldOrder.sold_to || '', oldOrder.ship_to || '', oldOrder.cus_ref || '',
+                oldOrder.cus_date_ref ? moment(oldOrder.cus_date_ref).format('YYYY-MM-DD HH:mm:ss') : null,
+                oldOrder.po_name || 'AOS', oldOrder.order_by || 'AOS', oldOrder.ship_cond || 'T1', oldOrder.pay_term || '',
+                moment().format('YYYY-MM-DD'), oldOrder.deli_time_req || 'Z00', oldOrder.description || '',
+                current_sh_cus_ref, currentDateTime,
+                'A', currentDateTime, '1', '0', '0'
+            ];
 
-                // ============ ปรับ running_number หากมีการสร้างในลูปนี้ไปแล้ว ============
-                if (newOrders.length > 0) {
-                    let lastInBatch = newOrders[newOrders.length - 1].sh_cus_ref;
-                    if (lastInBatch.startsWith('AOS' + req_date_str)) {
-                        let lastRunningInBatch = parseInt(lastInBatch.substring(11));
-                        if (lastRunningInBatch >= running_number) {
-                            running_number = lastRunningInBatch + 1;
-                        }
-                    }
-                }
+            const resNewOrder = await pgConn.execute2params(insertOrderScript, paramsOrder);
 
-                let new_sh_cus_ref = 'AOS' + req_date_str + String(running_number).padStart(4, '0');
+            if (resNewOrder.code) {
+                console.log(`⚠️ ไม่สามารถสร้าง Order ใหม่ให้ ID: ${currentId} ได้ (อาจจะเลขซ้ำหรือข้อมูลผิด)`);
+                continue;
+            }
 
+            // ====================== ดึง ID ใหม่มาใช้ ======================
+            let newOrderId = resNewOrder.data?.[0]?.id;
+            if (!newOrderId) {
+                const newIdResult = await pgConn.get(dbPrefix + lic_code, `SELECT id FROM tbl_order WHERE sh_cus_ref = '${current_sh_cus_ref}' ORDER BY id DESC LIMIT 1`, config.connectionString());
+                if (!newIdResult.code && newIdResult.data.length > 0) newOrderId = newIdResult.data[0].id;
+            }
 
-                // ============ สร้าง Order ใหม่ ============ 
-                let insert_order_script = `INSERT INTO tbl_order
-                    (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
-                        cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
-                        deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
-                        status_deli, ist_dt, order_flag, auto_order, order_status)
-                    VALUES
-                    (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`;
+            if (!newOrderId) continue;
 
-                let params_order = [
-                    oldOrder.order_type || '', oldOrder.order_group || '', oldOrder.chanel || '', oldOrder.division || '',
-                    oldOrder.sold_to || '', oldOrder.ship_to || '', oldOrder.cus_ref || '',
-                    oldOrder.cus_date_ref ? moment(oldOrder.cus_date_ref).format('YYYY-MM-DD HH:mm:ss') : null,
-                    oldOrder.po_name || 'AOS', oldOrder.order_by || 'AOS', oldOrder.ship_cond || 'T1', oldOrder.pay_term || '',
-                    moment().format('YYYY-MM-DD'), oldOrder.deli_time_req || 'Z00', oldOrder.description || '',
-                    new_sh_cus_ref, moment().format('YYYY-MM-DD HH:mm:ss'), 'A', moment().format('YYYY-MM-DD HH:mm:ss'), '1', 0, 0
-                ];
-
-                let res_new_order = await pgConn.execute2params(insert_order_script, params_order);
-
-                if (!res_new_order.code && res_new_order.data.length > 0) {
-                    let newOrderId = res_new_order.data[0].id;
-
-                    // ============ คัดลอกรายการสินค้าจาก Order ต้นฉบับมายัง Order ใหม่ ============
-                    for (let j = 0; j < order_items.length; j++) {
-                        let oldItem = order_items[j];
-                        let insert_item_script = `INSERT INTO tbl_order_item
-                            (order_no, item_no, item_qty, ist_dt, order_item_flag, auto_order, 
-                             deli_plant, sales_order_item)
-                            VALUES
-                            ($1, $2, $3, $4, $5, $6, $7, $8)`;
-
-                        let params_item = [
-                            newOrderId, oldItem.item_no || '', parseFloat(oldItem.item_qty) || 0,
-                            moment().format('YYYY-MM-DD HH:mm:ss'), '1', 0,
-                            oldItem.deli_plant || '', oldItem.sales_order_item || ''
-                        ];
-
-                        await pgConn.execute2params(insert_item_script, params_item);
-                    }
-
-                    newOrders.push({
-                        old_id: currentId,
-                        new_id: newOrderId,
-                        sh_cus_ref: new_sh_cus_ref
-                    });
-
-                    let logPayload = { old_id: currentId, new_order_id: newOrderId, sh_cus_ref: new_sh_cus_ref };
-                    await xglobal.action_logs(lic_code, action[0].id, 're_order_duplicate', JSON.stringify(logPayload), 'success', action[0].value);
+            // ====================== Insert Items ใหม่ ======================
+            if (order_items.length > 0) {
+                for (const oldItem of order_items) {
+                    const insertItemScript = `INSERT INTO tbl_order_item (order_no, item_no, item_qty, ist_dt, order_item_flag, auto_order, deli_plant, sales_order_item) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+                    await pgConn.execute2params(insertItemScript, [
+                        newOrderId, oldItem.item_no || '', parseFloat(oldItem.item_qty) || 0, currentDateTime, '1', '0', oldItem.deli_plant || '', oldItem.sales_order_item || ''
+                    ]);
                 }
             }
 
-            let response = [{
-                status: 'success',
-                invalid_code: '0',
-                message: `ทำการ Re-order เรียบร้อยแล้ว (${newOrders.length} รายการ)`,
-                data: newOrders,
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-
-            res.status(200).send(response);
-
-        } catch (err) {
-            console.log(err);
-            let response = [{
-                status: 'error',
-                invalid_code: '-99',
-                message: 'Internal Server Error: ' + err.message,
-                data: [],
-                response_time: moment().format('YYYY-MM-DD HH:mm:ss')
-            }];
-            res.status(200).send(response);
+            // ====================== บันทึกผลลัพธ์และ Log ======================
+            newOrders.push({ old_id: currentId, new_id: newOrderId, sh_cus_ref: current_sh_cus_ref });
+            await xglobal.action_logs(lic_code, action[0]?.id, 're_order_duplicate', JSON.stringify({ old_id: currentId, new_order_id: newOrderId, sh_cus_ref: current_sh_cus_ref }), 'success', action[0]?.value);
         }
 
-    })().catch(async (err) => {
-        console.log(err);
-        let response = [{
+        // ====================== ส่งผลลัพธ์ ======================
+        return res.status(200).send([{
+            status: 'success',
+            invalid_code: '0',
+            message: `ทำการ Re-order เรียบร้อยแล้ว (${newOrders.length} รายการ)`,
+            data: newOrders,
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        }]);
+
+    } catch (err) {
+        console.error("Error in reCreateOrderInformation:", err);
+        return res.status(200).send([{
             status: 'error',
             invalid_code: '-4',
             message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
             data: [],
-            response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
-        }]
-        res.status(200).send(response);
-    });
+            response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+        }]);
+    }
+};
 
-}
+// exports.reCreateOrderInformation = async (req, res, next) => {
+
+//     return (async () => {
+//         let lic_code = req.header('lic_code');
+//         let {
+//             id,
+//             action
+//         } = req.body[0];
+
+//         // เช็คเฉพาะส่วนที่สำคัญ
+//         if (id == undefined || action == undefined) {
+//             let response = [{
+//                 status: 'error',
+//                 invalid_code: '-1',
+//                 message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+//                 data: [],
+//                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+//             }]
+
+//             res.status(200).send(response);
+//             return;
+//         }
+
+//         try {
+
+//             let idList = Array.isArray(id) ? id : [id];
+//             let newOrders = [];
+
+//             for (let i = 0; i < idList.length; i++) {
+//                 let currentId = idList[i];
+//                 if (!currentId) continue;
+
+//                 // ============ ดึงข้อมูล Order ต้นฉบับ ============
+//                 let script_get_order = `SELECT * FROM tbl_order WHERE id = $1`;
+//                 let old_order_res = await pgConn.execute2params(script_get_order, [currentId]);
+
+//                 if (old_order_res.code || old_order_res.data.length === 0) {
+//                     console.log(`⚠️ ไม่พบข้อมูล Order ต้นฉบับ ID: ${currentId}`);
+//                     continue;
+//                 }
+
+//                 let oldOrder = old_order_res.data[0];
+
+//                 console.log(oldOrder.order_no);
+
+//                 // ============ ดึงข้อมูลรายการสินค้า (Items) ทั้งหมดจาก Order ต้นฉบับ ============
+//                 let script_get_items = `SELECT * FROM tbl_order_item WHERE order_no = $1 AND order_item_flag = '1'`;
+//                 let old_items_res = await pgConn.execute2params(script_get_items, [currentId.toString()]);
+//                 let order_items = old_items_res.data || [];
+
+//                 // ============ สร้าง sh_cus_ref ใหม่ตามรูปแบบ AOS + YYYYMMDD + Running Number ============
+//                 let req_date_str = moment().format('YYYYMMDD');
+//                 let script_check_sh_cus_ref = `
+//                     SELECT MAX(CAST(SUBSTRING(sh_cus_ref FROM 12) AS INTEGER)) as last_running 
+//                     FROM tbl_order 
+//                     WHERE sh_cus_ref LIKE $1 AND sh_cus_ref ~ '^AOS[0-9]{8}[0-9]+$'
+//                 `;
+//                 let check_sh_res = await pgConn.execute2params(script_check_sh_cus_ref, ['AOS' + req_date_str + '%'], config.connectionString());
+
+//                 let running_number = 1;
+//                 if (!check_sh_res.code && check_sh_res.data.length > 0 && check_sh_res.data[0].last_running !== null) {
+//                     running_number = parseInt(check_sh_res.data[0].last_running) + 1;
+//                 }
+
+//                 // ============ ปรับ running_number หากมีการสร้างในลูปนี้ไปแล้ว ============
+//                 if (newOrders.length > 0) {
+//                     let lastInBatch = newOrders[newOrders.length - 1].sh_cus_ref;
+//                     if (lastInBatch.startsWith('AOS' + req_date_str)) {
+//                         let lastRunningInBatch = parseInt(lastInBatch.substring(11));
+//                         if (lastRunningInBatch >= running_number) {
+//                             running_number = lastRunningInBatch + 1;
+//                         }
+//                     }
+//                 }
+
+//                 let new_sh_cus_ref = 'AOS' + req_date_str + String(running_number).padStart(4, '0');
+
+
+//                 // ============ สร้าง Order ใหม่ ============ 
+//                 let insert_order_script = `INSERT INTO tbl_order
+//                     (order_no, order_type, order_group, chanel, division, sold_to, ship_to,
+//                         cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,
+//                         deli_date_req, deli_time_req, description, sh_cus_ref, sh_cus_date_ref,
+//                         status_deli, ist_dt, order_flag, auto_order, order_status)
+//                     VALUES
+//                     (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`;
+
+//                 let params_order = [
+//                     oldOrder.order_type || '', oldOrder.order_group || '', oldOrder.chanel || '', oldOrder.division || '',
+//                     oldOrder.sold_to || '', oldOrder.ship_to || '', oldOrder.cus_ref || '',
+//                     oldOrder.cus_date_ref ? moment(oldOrder.cus_date_ref).format('YYYY-MM-DD HH:mm:ss') : null,
+//                     oldOrder.po_name || 'AOS', oldOrder.order_by || 'AOS', oldOrder.ship_cond || 'T1', oldOrder.pay_term || '',
+//                     moment().format('YYYY-MM-DD'), oldOrder.deli_time_req || 'Z00', oldOrder.description || '',
+//                     new_sh_cus_ref, moment().format('YYYY-MM-DD HH:mm:ss'), 'A', moment().format('YYYY-MM-DD HH:mm:ss'), '1', 0, 0
+//                 ];
+
+//                 let res_new_order = await pgConn.execute2params(insert_order_script, params_order);
+
+//                 if (!res_new_order.code && res_new_order.data.length > 0) {
+//                     let newOrderId = res_new_order.data[0].id;
+
+//                     // ============ คัดลอกรายการสินค้าจาก Order ต้นฉบับมายัง Order ใหม่ ============
+//                     for (let j = 0; j < order_items.length; j++) {
+//                         let oldItem = order_items[j];
+//                         let insert_item_script = `INSERT INTO tbl_order_item
+//                             (order_no, item_no, item_qty, ist_dt, order_item_flag, auto_order, 
+//                              deli_plant, sales_order_item)
+//                             VALUES
+//                             ($1, $2, $3, $4, $5, $6, $7, $8)`;
+
+//                         let params_item = [
+//                             newOrderId, oldItem.item_no || '', parseFloat(oldItem.item_qty) || 0,
+//                             moment().format('YYYY-MM-DD HH:mm:ss'), '1', 0,
+//                             oldItem.deli_plant || '', oldItem.sales_order_item || ''
+//                         ];
+
+//                         await pgConn.execute2params(insert_item_script, params_item);
+//                     }
+
+//                     newOrders.push({
+//                         old_id: currentId,
+//                         new_id: newOrderId,
+//                         sh_cus_ref: new_sh_cus_ref
+//                     });
+
+//                     let logPayload = { old_id: currentId, new_order_id: newOrderId, sh_cus_ref: new_sh_cus_ref };
+//                     await xglobal.action_logs(lic_code, action[0].id, 're_order_duplicate', JSON.stringify(logPayload), 'success', action[0].value);
+//                 }
+//             }
+
+//             let response = [{
+//                 status: 'success',
+//                 invalid_code: '0',
+//                 message: `ทำการ Re-order เรียบร้อยแล้ว (${newOrders.length} รายการ)`,
+//                 data: newOrders,
+//                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+//             }];
+
+//             res.status(200).send(response);
+
+//         } catch (err) {
+//             console.log(err);
+//             let response = [{
+//                 status: 'error',
+//                 invalid_code: '-99',
+//                 message: 'Internal Server Error: ' + err.message,
+//                 data: [],
+//                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
+//             }];
+//             res.status(200).send(response);
+//         }
+
+//     })().catch(async (err) => {
+//         console.log(err);
+//         let response = [{
+//             status: 'error',
+//             invalid_code: '-4',
+//             message: `ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ`,
+//             data: [],
+//             response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
+//         }]
+//         res.status(200).send(response);
+//     });
+
+// }
 
 
 
