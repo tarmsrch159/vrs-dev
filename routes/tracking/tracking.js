@@ -19,20 +19,20 @@ exports.getHistoryInformation = async (req, res, next) => {
     let lic_code = req.header("lic_code");
     let { veh_blackbox_number, transit_start_dt, transit_end_dt, action } =
       req.body[0];
-    //เช็คเฉพาะส่วนที่สำคัญ
-    if (
-      veh_blackbox_number == undefined ||
-      transit_start_dt == undefined ||
-      lic_code == undefined ||
-      transit_end_dt == undefined ||
-      action == undefined
-    ) {
+    let missing = [];
+    if (veh_blackbox_number == undefined) missing.push('veh_blackbox_number');
+    if (transit_start_dt == undefined) missing.push('transit_start_dt');
+    if (lic_code == undefined) missing.push('lic_code');
+    if (transit_end_dt == undefined) missing.push('transit_end_dt');
+    if (action == undefined) missing.push('action');
+
+    if (missing.length > 0) {
       let response = [
         {
           status: "error",
           invalid_code: "-1",
           message:
-            "ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง",
+            `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
           data: xresult,
           response_time: moment().format("YYYY-MM-DD HH:mm:ss"),
           page_total: 0,
@@ -41,8 +41,10 @@ exports.getHistoryInformation = async (req, res, next) => {
       ];
 
       res.status(200).send(response);
-    } else {
-      let data = JSON.stringify({
+      return;
+    }
+
+    let data = JSON.stringify({
         api_token_key:
           "CVR5KZLU2N8L77JEP4XB23SVYBR6GAMHNUED9FPQ8TKWF6TSQJ19D4WCGYAX3MHZ",
         start_period: moment(transit_start_dt).format("YYYY-MM-DD HH:mm:ss"),
@@ -158,8 +160,7 @@ exports.getHistoryInformation = async (req, res, next) => {
 
           res.status(200).send(response);
           return;
-        });
-    }
+    });
   })().catch(async (err) => {
     console.log(err);
     let response = [

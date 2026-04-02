@@ -5,8 +5,8 @@ const xglobal = require('../../middleware/global');
 
 const dbPrefix = config.dbPrefix();
 
-// =========== ดึงข้อมูลกลุ่มรถ ===========
-exports.getVehicleGroupInformation = async (req, res, next) => {
+// =========== ดึงข้อมูลปฏิทินสถานะรถ ===========
+exports.getVehicleCalendarInformation = async (req, res, next) => {
 
     var xresult = [];
 
@@ -14,14 +14,15 @@ exports.getVehicleGroupInformation = async (req, res, next) => {
 
         let lic_code = req.header('lic_code');
         // ======== รับพารามิเตอร์ ========
-        let { veh_group_code, veh_group_name,
+        let { veh_cal_code, vehicle_code, unavail_date,
             action, page_index, page_limit } = req.body[0] || {};
 
         // ======== กำหนดค่าเริ่มต้น ========
         page_index = page_index === undefined ? 1 : page_index;
         page_limit = page_limit === undefined ? 10 : page_limit;
-        veh_group_code = veh_group_code === undefined ? 'ALL' : veh_group_code;
-        veh_group_name = veh_group_name === undefined ? 'ALL' : veh_group_name;
+        veh_cal_code = veh_cal_code === undefined ? 'ALL' : veh_cal_code;
+        vehicle_code = vehicle_code === undefined ? 'ALL' : vehicle_code;
+        unavail_date = unavail_date === undefined ? 'ALL' : unavail_date;
 
         // ======== ตรวจสอบพารามิเตอร์ที่จำเป็น ========
         if (lic_code === undefined || action === undefined) {
@@ -43,39 +44,49 @@ exports.getVehicleGroupInformation = async (req, res, next) => {
 
         // ======== สร้างเงื่อนไข WHERE (Dynamic Conditions) ========
         let conditions = [
-            "tbl_vehicle_group.rm_dt IS NULL",
-            "tbl_vehicle_group.trash = false",
-            "tbl_vehicle_group.veh_group_flag = '1'"
+            "tbl_vehicle_calendar.rm_dt IS NULL",
+            "tbl_vehicle_calendar.veh_cal_flag = 1"
         ];
 
-        if (veh_group_code.toString().toUpperCase() !== 'ALL') {
-            conditions.push(`tbl_vehicle_group.veh_group_code = '${veh_group_code}'`);
+        if (veh_cal_code.toString().toUpperCase() !== 'ALL') {
+            conditions.push(`tbl_vehicle_calendar.veh_cal_code = '${veh_cal_code}'`);
         }
 
-        if (veh_group_name.toString().toUpperCase() !== 'ALL') {
-            conditions.push(`tbl_vehicle_group.veh_group_name LIKE '%${veh_group_name}%'`);
+        if (vehicle_code.toString().toUpperCase() !== 'ALL') {
+            conditions.push(`tbl_vehicle_calendar.vehicle_code = '${vehicle_code}'`);
+        }
+
+        if (unavail_date.toString().toUpperCase() !== 'ALL') {
+            conditions.push(`tbl_vehicle_calendar.unavail_date = '${unavail_date}'`);
         }
 
         let whereClause = "WHERE " + conditions.join(" AND ");
 
-        // ======== SQL สำหรับดึงข้อมูล Vehicle Group ========
+        // ======== SQL สำหรับดึงข้อมูล Calendar ========
         let dataScript = `
             SELECT 
-                veh_group_code,
-                veh_group_name,
-                veh_group_color_rgb,
-                create_by,
-                modified_by,
-                ist_dt,
-                mdf_dt,
-                rm_dt,
-                trash,
-                veh_group_flag,
-                work_start_time,
-                work_end_time
-            FROM tbl_vehicle_group
+                tbl_vehicle_calendar.veh_cal_code,
+                tbl_vehicle_calendar.vehicle_code,
+                tbl_vehicle.vehicle_name,
+                tbl_vehicle.vehicle_license,
+                tbl_vehicle_type.veh_type_name,
+                tbl_vehicle_brand.brand_name,
+                tbl_vehicle_model.model_name,
+                tbl_vehicle_submodel.submodel_name,
+                tbl_vehicle_calendar.unavail_remark,
+                tbl_vehicle_calendar.unavail_type,
+                tbl_vehicle_calendar.unavail_period,
+                tbl_vehicle.seat_capacity,
+                tbl_vehicle_calendar.unavail_date,
+                tbl_vehicle_calendar.ist_dt
+            FROM tbl_vehicle_calendar
+            LEFT JOIN tbl_vehicle ON tbl_vehicle_calendar.vehicle_code = tbl_vehicle.vehicle_code
+            LEFT JOIN tbl_vehicle_submodel ON tbl_vehicle.submodel_code = tbl_vehicle_submodel.submodel_code
+            LEFT JOIN tbl_vehicle_model ON tbl_vehicle_submodel.model_code = tbl_vehicle_model.model_code
+            LEFT JOIN tbl_vehicle_brand ON tbl_vehicle_model.brand_code = tbl_vehicle_brand.brand_code
+            LEFT JOIN tbl_vehicle_type ON tbl_vehicle.veh_type_code = tbl_vehicle_type.veh_type_code
             ${whereClause}
-            ORDER BY ist_dt DESC 
+            ORDER BY tbl_vehicle_calendar.unavail_date DESC 
             OFFSET (${page_index} * ${page_limit}) LIMIT ${page_limit};
         `;
 
@@ -89,9 +100,9 @@ exports.getVehicleGroupInformation = async (req, res, next) => {
                 // ======== นับจำนวนแถวทั้งหมด ========
                 let countScript = `
                     SELECT 
-                        COUNT(veh_group_code) as rows_total,
-                        CEIL(COUNT(veh_group_code)::float / ${page_limit}) as page_total
-                    FROM tbl_vehicle_group
+                        COUNT(tbl_vehicle_calendar.veh_cal_code) as rows_total,
+                        CEIL(COUNT(tbl_vehicle_calendar.veh_cal_code)::float / ${page_limit}) as page_total
+                    FROM tbl_vehicle_calendar
                     ${whereClause};
                 `;
 
@@ -141,7 +152,7 @@ exports.getVehicleGroupInformation = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
             return;
         }
 
@@ -157,22 +168,22 @@ exports.getVehicleGroupInformation = async (req, res, next) => {
         res.status(200).send(response);
 
         if (req.body[0] && req.body[0].action) {
-            await xglobal.action_logs(lic_code, req.body[0].action[0].id, 'ดึงข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'เกิดข้อผิดพลาดภายในระบบ', req.body[0].action[0].value);
+            await xglobal.action_logs(lic_code, req.body[0].action[0].id, 'ดึงข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'เกิดข้อผิดพลาดภายในระบบ', req.body[0].action[0].value);
         }
         return;
     });
 
 }
 
-// =========== ลบข้อมูลกลุ่มรถ (รองรับ array) ===========
-exports.removeVehicleGroup = async (req, res, next) => {
+// =========== ลบข้อมูลปฏิทินสถานะรถ (รองรับ array) ===========
+exports.removeVehicleCalendar = async (req, res, next) => {
 
     return (async () => {
 
         let lic_code = req.header('lic_code');
-        let { veh_group_code, action } = req.body[0];
+        let { veh_cal_code, action } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (veh_group_code == undefined || lic_code == undefined || action == undefined) {
+        if (veh_cal_code == undefined || lic_code == undefined || action == undefined) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
@@ -184,23 +195,23 @@ exports.removeVehicleGroup = async (req, res, next) => {
             res.status(200).send(response);
         } else {
 
-            let veh_group_codeArr = Array.isArray(veh_group_code) ? veh_group_code : [veh_group_code];
-            let veh_group_codeIn = veh_group_codeArr.map(c => `'${c}'`).join(', ');
+            let veh_cal_codeArr = Array.isArray(veh_cal_code) ? veh_cal_code : [veh_cal_code];
+            let veh_cal_codeIn = veh_cal_codeArr.map(c => `'${c}'`).join(', ');
 
-            let script = `UPDATE tbl_vehicle_group SET veh_group_flag = '0', trash = true, rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE veh_group_code IN (${veh_group_codeIn});`
+            let script = `UPDATE tbl_vehicle_calendar SET veh_cal_flag = 0, rm_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' WHERE veh_cal_code IN (${veh_cal_codeIn});`
 
             let tbl_temporary = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
             if (!tbl_temporary.code) {
                 let response = [{
                     status: 'success',
                     invalid_code: '0',
-                    message: 'ลบข้อมูลกลุ่มรถสำเร็จ',
+                    message: 'ลบข้อมูลสำเร็จ',
                     data: [],
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
 
                 res.status(200).send(response);
-                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'success', action[0].value);
+                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'success', action[0].value);
                 return;
             } else {
                 let response = [{
@@ -211,7 +222,7 @@ exports.removeVehicleGroup = async (req, res, next) => {
                     response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                 }]
                 res.status(200).send(response);
-                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+                await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
                 return;
             }
         }
@@ -229,30 +240,29 @@ exports.removeVehicleGroup = async (req, res, next) => {
         const _lic = req.header('lic_code');
         const _act = req.body?.[0]?.action?.[0] || {};
         if (_lic && _act.id) {
-            await xglobal.action_logs(_lic, _act.id, 'ลบข้อมูลกลุ่มรถ', JSON.stringify(req.body?.[0] || {}), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', _act.value);
+            await xglobal.action_logs(_lic, _act.id, 'ลบข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body?.[0] || {}), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', _act.value);
         }
         return;
     });
 
 }
 
-// =========== แก้ไขข้อมูลกลุ่มรถ ===========
-exports.setVehicleGroupInformation = async (req, res, next) => {
+// =========== แก้ไขข้อมูลปฏิทินสถานะรถ ===========
+exports.setVehicleCalendarInformation = async (req, res, next) => {
 
     return (async () => {
         let lic_code = req.header('lic_code');
-        let { veh_group_code } = req.query;
+        let { veh_cal_code } = req.query;
 
         let {
-            veh_group_name,
-            veh_group_color_rgb,
-            work_start_time,
-            work_end_time,
+            unavail_remark,
+            unavail_type,
+            unavail_period,
             action
         } = req.body[0] || {};
 
         // เช็คพารามิเตอร์ที่จำเป็น 
-        if (action === undefined || lic_code === undefined || veh_group_code === undefined) {
+        if (action === undefined || lic_code === undefined || veh_cal_code === undefined) {
 
             let response = [{
                 status: 'error',
@@ -267,15 +277,12 @@ exports.setVehicleGroupInformation = async (req, res, next) => {
         }
 
         let script = `
-            UPDATE tbl_vehicle_group SET
-            veh_group_name = '${veh_group_name}',
-            veh_group_color_rgb = '${veh_group_color_rgb}',
-            modified_by = '${modified_by}',
-            veh_group_flag = '${veh_group_flag === undefined ? '1' : veh_group_flag}',
-            work_start_time = '${work_start_time}',
-            work_end_time = '${work_end_time}',
+            UPDATE tbl_vehicle_calendar SET
+            unavail_remark = '${unavail_remark}',
+            unavail_type = '${unavail_type}',
+            unavail_period = '${unavail_period}',
             mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-            WHERE veh_group_code = '${veh_group_code}';
+            WHERE veh_cal_code = '${veh_cal_code}';
         `;
 
         script = script.replace(/'NULL'/gi, "NULL").replace(/'undefined'/gi, "NULL");
@@ -292,7 +299,7 @@ exports.setVehicleGroupInformation = async (req, res, next) => {
             }];
 
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'success', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'success', action[0].value);
             return;
         } else {
             let response = [{
@@ -303,7 +310,7 @@ exports.setVehicleGroupInformation = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'แก้ไขข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
             return;
         }
 
@@ -319,28 +326,29 @@ exports.setVehicleGroupInformation = async (req, res, next) => {
         res.status(200).send(response);
 
         if (req.body[0] && req.body[0].action) {
-            await xglobal.action_logs(lic_code, req.body[0].action[0].id, 'แก้ไขข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'เกิดข้อผิดพลาดภายในระบบ', req.body[0].action[0].value);
+            await xglobal.action_logs(lic_code, req.body[0].action[0].id, 'แก้ไขข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'เกิดข้อผิดพลาดภายในระบบ', req.body[0].action[0].value);
         }
         return;
     });
 
 }
 
-// =========== เพิ่มข้อมูลกลุ่มรถ ===========
-exports.addVehicleGroupInformation = async (req, res, next) => {
+// =========== เพิ่มข้อมูลปฏิทินสถานะรถ ===========
+exports.addVehicleCalendarInformation = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
 
         let {
-            veh_group_name,
-            veh_group_color_rgb,
-            work_start_time,
-            work_end_time,
+            vehicle_code,
+            unavail_date,
+            unavail_remark,
+            unavail_type,
+            unavail_period,
             action
         } = req.body[0] || {};
 
         // เช็คเฉพาะส่วนที่สำคัญ
-        if (veh_group_name == undefined || action == undefined || lic_code == undefined) {
+        if (vehicle_code == undefined || unavail_date == undefined || action == undefined || lic_code == undefined) {
 
             let response = [{
                 status: 'error',
@@ -353,40 +361,41 @@ exports.addVehicleGroupInformation = async (req, res, next) => {
             return res.status(200).send(response);
         }
 
-        // เช็คข้อมูลซ้ำจาก veh_group_name
-        let scriptCheck = `SELECT veh_group_code FROM tbl_vehicle_group WHERE veh_group_name = '${veh_group_name}' AND veh_group_flag = '1' AND rm_dt IS NULL;`;
+        // เช็คข้อมูลซ้ำจาก vehicle_code และ unavail_date
+        let scriptCheck = `SELECT veh_cal_code FROM tbl_vehicle_calendar WHERE vehicle_code = '${vehicle_code}' AND unavail_date = '${unavail_date}' AND veh_cal_flag = 1 AND rm_dt IS NULL;`;
         let tbl_check = await pgConn.get(dbPrefix + lic_code, scriptCheck, config.connectionString());
 
         if (tbl_check && tbl_check.data && tbl_check.data.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: `ข้อมูลกลุ่มรถ '${veh_group_name}' มีอยู่ในระบบแล้ว`,
+                message: `ข้อมูลปฏิทินสำหรับรถคันนี้และวันที่นี้มีอยู่ในระบบแล้ว`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
 
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), `ข้อมูลกลุ่มรถซ้ำ (${veh_group_name})`, action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), `ข้อมูลปฏิทินซ้ำ (${vehicle_code} / ${unavail_date})`, action[0].value);
             return;
         }
 
-        // สร้างรหัสกลุ่มรถใหม่
-        let veh_group_code = 'VEHG-' + moment().format('x');
+        // สร้างรหัสปฏิทินใหม่
+        let veh_cal_code = 'VCL-' + moment().format('x');
 
         // คำสั่ง INSERT
-        let script = `INSERT INTO tbl_vehicle_group 
-            (veh_group_code, veh_group_name, veh_group_color_rgb, ist_dt, veh_group_flag, work_start_time, work_end_time) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7);`;
+        let script = `INSERT INTO tbl_vehicle_calendar 
+            (veh_cal_code, vehicle_code, unavail_date, unavail_remark, unavail_type, unavail_period, ist_dt, veh_cal_flag) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`;
 
         let params = [
-            veh_group_code,
-            veh_group_name,
-            veh_group_color_rgb,
+            veh_cal_code,
+            vehicle_code,
+            unavail_date,
+            unavail_remark,
+            unavail_type,
+            unavail_period,
             moment().format('YYYY-MM-DD HH:mm:ss'),
-            '1',
-            work_start_time,
-            work_end_time
+            1
         ];
 
         let tbl_temporary = await pgConn.execute2params(script, params);
@@ -397,13 +406,13 @@ exports.addVehicleGroupInformation = async (req, res, next) => {
                 invalid_code: '0',
                 message: 'บันทึกข้อมูลสำเร็จ',
                 data: [{
-                    veh_group_code: veh_group_code
+                    veh_cal_code: veh_cal_code
                 }],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
 
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'success', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'success', action[0].value);
             return;
         } else {
             let response = [{
@@ -414,7 +423,7 @@ exports.addVehicleGroupInformation = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
             return;
         }
 
@@ -431,7 +440,7 @@ exports.addVehicleGroupInformation = async (req, res, next) => {
         }];
         res.status(200).send(response);
         if (action) {
-            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลกลุ่มรถ', JSON.stringify(req.body[0]), 'System Error: ' + err.message, action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'เพิ่มข้อมูลปฏิทินสถานะรถ', JSON.stringify(req.body[0]), 'System Error: ' + err.message, action[0].value);
         }
         return;
     });

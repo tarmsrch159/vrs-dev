@@ -15,12 +15,16 @@ exports.getOrderTypeInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { ord_type_code, action } = req.body[0] || {};
 
-        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
-        if (ord_type_code == undefined || lic_code == undefined || action == undefined) {
+        let missing = [];
+        if (ord_type_code == undefined) missing.push('ord_type_code');
+        if (lic_code == undefined) missing.push('lic_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -130,12 +134,15 @@ exports.addOrderType = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ========== เช็คข้อมูลพารามิเตอร์ที่ส่งมา ==========
-        if (ord_type_desc == undefined || action == undefined) {
+        let missing = [];
+        if (ord_type_desc == undefined) missing.push('ord_type_desc');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -261,12 +268,16 @@ exports.setOrderType = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ========== เช็คข้อมูลพารามิเตอร์ที่ส่งมา ==========
-        if (ord_type_code == undefined || ord_type_desc == undefined || action == undefined) {
+        let missing = [];
+        if (ord_type_code == undefined) missing.push('ord_type_code');
+        if (ord_type_desc == undefined) missing.push('ord_type_desc');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -345,12 +356,15 @@ exports.removeOrderType = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ========== เช็คข้อมูลพารามิเตอร์ที่ส่งมา ==========
-        if (ord_type_code == undefined || action == undefined) {
+        let missing = [];
+        if (ord_type_code == undefined) missing.push('ord_type_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]

@@ -2,10 +2,61 @@ const {
     Pool
 } = require('pg')
 var pool;
+
+// Bypass for localhost: map production db names to local db names
+const DB_NAME_OVERRIDE = {
+    'tms_vrs01': 'vrs_dev'
+};
+function resolveDbName(dbname) {
+    return DB_NAME_OVERRIDE[dbname] || dbname;
+}
 exports.link = async (connectionstring) => {
     let temporary = JSON.parse(JSON.stringify(connectionstring));
     pool = new Pool(temporary)
 }
+
+exports.executeTransaction = async (dbname, callback, connectionstring) => {
+    let temporary = JSON.parse(JSON.stringify(connectionstring));
+    if (dbname != null) {
+        temporary.database = resolveDbName(dbname);
+    }
+
+    const clientPool = new Pool(temporary);
+    const client = await clientPool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await callback(client);
+        await client.query('COMMIT');
+        return {
+            code: false,
+            data: result
+        };
+    } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Transaction Error:', e.message);
+        return {
+            code: true,
+            message: e.message
+        };
+    } finally {
+        client.release();
+        await clientPool.end(); // Close the temporary pool
+    }
+};
+
+exports.executeWithClient = async (client, script, params = []) => {
+    try {
+        const res = await client.query(script, params);
+        return {
+            code: false,
+            rowaction: res.rowCount,
+            data: res.rows
+        };
+    } catch (e) {
+        console.error('Query with Client Error:', e.message);
+        throw e; // Rethrow to let the transaction handler manage it
+    }
+};
 
 exports.execute2params = async (script, params = []) => {
 
@@ -53,7 +104,7 @@ exports.execute = async (dbname, script, connectionstring) => {
     //debugger;
     let temporary = JSON.parse(JSON.stringify(connectionstring))
     if (dbname != null) {
-        temporary.database = dbname
+        temporary.database = resolveDbName(dbname) // bypass: resolve to local db
     }
     try {
         var pool = new Pool(temporary)
@@ -107,7 +158,7 @@ exports.get = async (dbname, script, connectionstring) => {
     //get data
     let temporary = JSON.parse(JSON.stringify(connectionstring))
     if (dbname != null) {
-        temporary.database = dbname
+        temporary.database = resolveDbName(dbname) // bypass: resolve to local db
     }
 
     try {
@@ -133,7 +184,7 @@ exports.get = async (dbname, script, connectionstring) => {
     } catch (error) {
 
         if (error.code != '3D000') {
-            console.log(script + ' : error code : ' + e.code + ' err.message : ' + e.message)
+            console.log(script + ' : error code : ' + error.code + ' err.message : ' + error.message)
         }
 
         return {

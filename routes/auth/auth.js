@@ -15,11 +15,16 @@ exports.authEmployeeInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { emp_username, emp_userpassword } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (emp_username == undefined || emp_userpassword == undefined || lic_code == undefined) {
+        let missing = [];
+        if (emp_username == undefined) missing.push('emp_username');
+        if (emp_userpassword == undefined) missing.push('emp_userpassword');
+        if (lic_code == undefined) missing.push('lic_code');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -129,11 +134,16 @@ exports.resetEmployeeInformation = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { emp_username, emp_email, emp_userpassword } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (emp_username == undefined || emp_email == undefined || emp_userpassword == undefined) {
+        let missing = [];
+        if (emp_username == undefined) missing.push('emp_username');
+        if (emp_email == undefined) missing.push('emp_email');
+        if (emp_userpassword == undefined) missing.push('emp_userpassword');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถคืนค่ารหัสผ่านได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถคืนค่ารหัสผ่านได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
 

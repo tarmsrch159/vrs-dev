@@ -22,15 +22,20 @@ exports.getOrderInformation = async (req, res, next) => {
         auto_order = auto_order === undefined ? 'ALL' : auto_order;
         status_deli = status_deli === undefined ? 'ALL' : status_deli;
 
-        // ======== ตรวจสอบความถูกต้องของพารามิเตอร์ที่จำเป็น ========
-        if (start_date === undefined || end_date === undefined ||
-            order_type === undefined || order_status === undefined ||
-            search === undefined || action === undefined) {
+        let missing = [];
+        if (start_date === undefined) missing.push('start_date');
+        if (end_date === undefined) missing.push('end_date');
+        if (order_type === undefined) missing.push('order_type');
+        if (order_status === undefined) missing.push('order_status');
+        if (search === undefined) missing.push('search');
+        if (action === undefined) missing.push('action');
+
+        if (missing.length > 0) {
 
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -208,12 +213,15 @@ exports.getOrderInformationByID = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { id, action } = req.body[0];
 
-        // ======== ตรวจสอบว่ามีการส่งพารามิเตอร์ที่จำเป็น ========
-        if (id == undefined || action == undefined) {
+        let missing = [];
+        if (id == undefined) missing.push('id');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -344,14 +352,20 @@ exports.getOrderReportInformation = async (req, res, next) => {
         auto_order = auto_order === undefined ? 'ALL' : auto_order;
         status_deli = status_deli === undefined ? 'ALL' : status_deli;
 
-        // ========== เช็คเฉพาะส่วนที่สำคัญ ==========
-        if (start_date === undefined || end_date === undefined || order_type === undefined ||
-            order_status === undefined || search === undefined || action === undefined) {
+        let missing = [];
+        if (start_date === undefined) missing.push('start_date');
+        if (end_date === undefined) missing.push('end_date');
+        if (order_type === undefined) missing.push('order_type');
+        if (order_status === undefined) missing.push('order_status');
+        if (search === undefined) missing.push('search');
+        if (action === undefined) missing.push('action');
+
+        if (missing.length > 0) {
 
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -539,12 +553,15 @@ exports.getLoggingOrderInformation = async (req, res, next) => {
         page_index = page_index == undefined ? 1 : page_index;
         page_limit = page_limit == undefined ? 10 : page_limit;
 
-        // เช็คเฉพาะส่วนที่สำคัญ
-        if (action_desc == undefined || action == undefined) {
+        let missing = [];
+        if (action_desc == undefined) missing.push('action_desc');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -765,12 +782,16 @@ exports.getOrderReport = async (req, res, next) => {
         page_index = page_index === undefined ? 1 : page_index;
         page_limit = page_limit === undefined ? 10 : page_limit;
 
-        //เช็คเฉพาะส่วนที่สำคัญ
-        if (req_dt === undefined || order_no === undefined || action === undefined) {
+        let missing = [];
+        if (req_dt === undefined) missing.push('req_dt');
+        if (order_no === undefined) missing.push('order_no');
+        if (action === undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -929,11 +950,14 @@ exports.getOrderRunout = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { action } = req.body[0];
 
-        if (action == undefined) {
+        let missing = [];
+        if (action === undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -1947,11 +1971,15 @@ exports.cancelOrderInformationHana = async (req, res, next) => {
         let { order_id, action } = req.body[0];
         let orderIds = Array.isArray(order_id) ? order_id : [order_id];
 
-        if (!orderIds || !action) {
+        let missing = [];
+        if (!orderIds) missing.push('order_id');
+        if (!action) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -2217,14 +2245,21 @@ exports.addOrderInformation = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // ====================== เช็คเฉพาะส่วนที่สำคัญ ======================
-        if (order_type == undefined || order_group == undefined
-            || sold_to == undefined || ship_to == undefined
-            || deli_date_req == undefined || deli_time_req == undefined || order_item == undefined || action == undefined) {
+        let missing = [];
+        if (order_type == undefined) missing.push('order_type');
+        if (order_group == undefined) missing.push('order_group');
+        if (sold_to == undefined) missing.push('sold_to');
+        if (ship_to == undefined) missing.push('ship_to');
+        if (deli_date_req == undefined) missing.push('deli_date_req');
+        if (deli_time_req == undefined) missing.push('deli_time_req');
+        if (order_item == undefined) missing.push('order_item');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -2818,12 +2853,15 @@ exports.setStatusDeli = async (req, res, next) => {
             action
         } = req.body[0];
 
-        // เช็คเฉพาะส่วนที่สำคัญ
-        if (status_deli == undefined || action == undefined) {
+        let missing = [];
+        if (status_deli == undefined) missing.push('status_deli');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
@@ -3052,12 +3090,16 @@ exports.removeOrderInformationById = async (req, res, next) => {
     return (async () => {
         let lic_code = req.header('lic_code');
         let { order_id, action } = req.body[0];
-        //เช็คเฉพาะส่วนที่สำคัญ
-        if (order_id == undefined || lic_code == undefined || action == undefined) {
+        let missing = [];
+        if (order_id == undefined) missing.push('order_id');
+        if (lic_code == undefined) missing.push('lic_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -3124,12 +3166,15 @@ exports.reCreateOrderInformation = async (req, res, next) => {
         const payload = req.body[0] || {};
         const { id, action } = payload;
 
-        // ====================== เช็คข้อมูลที่ต้องใช้ ======================
-        if (id === undefined || action === undefined) {
+        let missing = [];
+        if (id === undefined) missing.push('id');
+        if (action === undefined) missing.push('action');
+
+        if (missing.length > 0) {
             return res.status(200).send([{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]);

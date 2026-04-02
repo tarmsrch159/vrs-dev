@@ -289,14 +289,20 @@ exports.addLicenseFuelInformation = async (req, res, next) => {
             customer_mobilenumber, sale_contact_fullname, sale_contact_mobilenumber, remark, action } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (customer_company_desc == undefined || customer_contact_fullname == undefined
-            || customer_mobilenumber == undefined || sale_contact_fullname == undefined
-            || sale_contact_mobilenumber == undefined
-            || remark == undefined || action == undefined) {
+        let missing = [];
+        if (customer_company_desc == undefined) missing.push('customer_company_desc');
+        if (customer_contact_fullname == undefined) missing.push('customer_contact_fullname');
+        if (customer_mobilenumber == undefined) missing.push('customer_mobilenumber');
+        if (sale_contact_fullname == undefined) missing.push('sale_contact_fullname');
+        if (sale_contact_mobilenumber == undefined) missing.push('sale_contact_mobilenumber');
+        if (remark == undefined) missing.push('remark');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]

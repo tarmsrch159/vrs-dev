@@ -1,6 +1,12 @@
 # ใช้ Node.js LTS version
 FROM node:18-alpine
 
+# Support for Thai logs directly in the image
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV TZ=Asia/Bangkok
+
+
 # สร้าง directory สำหรับแอป
 WORKDIR /usr/src/app
 

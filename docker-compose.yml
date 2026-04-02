@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    # Use standard bridge networking for Mac. 
+    # The application will connect using host.docker.internal specified in DB_HOST.
+    ports:
+      - "1234:1234"
+    environment:
+      - PORT=1234
+      - DB_HOST=host.docker.internal # Connect to the database on the Mac host
+      - DB_PORT=5432
+      - DB_USER=tanachai_ho
+      - DB_PASSWORD=123456
+      - DB_NAME=vrs_dev
+      - TZ=Asia/Bangkok
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+    restart: always
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    command: npx nodemon -L bin/www

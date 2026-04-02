@@ -4484,3 +4484,15 @@ exports.postSyncVMIOrder_BK = async (lic_code) => {
     }
 
 }
+
+// Helper สำหรับส่ง Response กลับไปให้ Client เพื่อลดความซ้ำซ้อน
+exports.sendResponse = (res, status, invalid_code, message, data = [], extras = {}) => {
+    return res.status(200).send([{
+        status,
+        invalid_code,
+        message,
+        data,
+        response_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+        ...extras
+    }]);
+};

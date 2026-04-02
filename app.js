@@ -18,22 +18,20 @@ var officeRouter = require('./routes/office/index');
 var locationRouter = require('./routes/location/index');
 var vehicleRouter = require('./routes/vehicle/index');
 var orderRouter = require('./routes/order/index');
-var itemRouter = require('./routes/item/index');
-var transporeonRouter = require('./routes/transporeon/index');
-var petrolRouter = require('./routes/petrol/index');
-var depotRouter = require('./routes/depot/index');
+var stationRouter = require('./routes/station/index');
 var utilityRouter = require('./routes/utility/index');
 var centerRouter = require('./routes/center/index');
-var jobRouter = require('./routes/job/index');
 var trackingRouter = require('./routes/tracking/index');
-var reportRouter = require('./routes/report/index');
-var masterTimeRouter = require('./routes/master-time/index');
+var roleRouter = require('./routes/role/index');
+var userRouter = require('./routes/user/index');
+var bookingRouter = require('./routes/booking/index');
 var app = express();
 var cors = require('cors');
 var config = require('./configuration/connection');
 const prod = true;
 const paths = path.join(__dirname, 'files');
 const paths_prod = '/root/tms-fuel/back-end/gateway/files/';
+
 
 // gzip/deflate outgoing responses
 var compression = require('compression');
@@ -59,7 +57,53 @@ app.use(session({
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 app.use(cors());
-app.use(logger('dev'));
+logger.token('date', function (req, res) {
+    return moment().format('YYYY-MM-DD HH:mm:ss');
+});
+
+logger.token('body', (req, res) => {
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+        let bodyCopy = { ...req.body };
+
+        const sensitiveFields = ['password', 'secret', 'token'];
+        sensitiveFields.forEach(field => {
+            if (bodyCopy[field]) bodyCopy[field] = '******';
+        });
+
+        if (bodyCopy["0"]) {
+            bodyCopy = bodyCopy["0"];
+        }
+
+        if (Object.keys(bodyCopy).length > 0) {
+            // ใช้ JSON.stringify แบบธรรมดาที่สุด 
+            // Morgan จะจัดการ string นี้ออกไปที่ console.log เอง
+            return JSON.stringify(bodyCopy, null, 2);
+        }
+    }
+    return null;
+});
+
+
+app.use(logger((tokens, req, res) => {
+    const mainLog = [
+        `[${tokens.date(req, res)}]`,
+        tokens.method(req, res),
+        tokens.url(req, res),
+        tokens.status(req, res),
+        `${tokens['response-time'](req, res)} ms`,
+        '-',
+        tokens.res(req, res, 'content-length')
+    ].join(' ');
+
+    const bodyLog = tokens.body(req, res);
+
+    const separator = '\n' + '-'.repeat(50);
+
+    return bodyLog
+        ? `${mainLog}\n${bodyLog}${separator}`
+        : `${mainLog}${separator}`;
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -81,7 +125,7 @@ const storage = multer.diskStorage({
 })
 
 const upload = multer({ storage: storage })
-app.post('/api-tms-v2/upload/temporary', upload.single('fileupload'), async (req, res) => {
+app.post('/api-vrs-v2/upload/temporary', upload.single('fileupload'), async (req, res) => {
     debugger;
     console.log(req.id);
     console.log(req.body);
@@ -128,6 +172,16 @@ exports.xAuthorization = async (req, res) => {
 
         let lic_code = req.header('lic_code');
         console.log(lic_code);
+        if (lic_code == undefined || lic_code.toString() == '') {
+            lic_code = 'vrs01';
+        }
+
+        req.headers['lic_code'] = lic_code; // Ensure it's available for subsequent middleware
+
+        if (lic_code == 'vrs01') {
+            return true;
+        }
+
         if (lic_code == undefined || lic_code.toString() == '') {
             if (req.url.toString().indexOf('register/license/verification') != -1) {
                 return true;
@@ -255,6 +309,7 @@ exports.xAuthorization = async (req, res) => {
         }
 
 
+
     }
     catch (ex) {
         let response = [{
@@ -270,45 +325,39 @@ exports.xAuthorization = async (req, res) => {
 }
 
 //auth
-app.use('/api-tms-v2/auth', authRouter);
+app.use('/api-vrs-v2/auth', authRouter);
 //employee
-app.use('/api-tms-v2/employee', employeeRouter);
+app.use('/api-vrs-v2/employee', employeeRouter);
 //division
-app.use('/api-tms-v2/division', divisionRouter);
+app.use('/api-vrs-v2/division', divisionRouter);
 //department
-app.use('/api-tms-v2/department', departmentRouter);
+app.use('/api-vrs-v2/department', departmentRouter);
 //position
-app.use('/api-tms-v2/position', positionRouter);
+app.use('/api-vrs-v2/position', positionRouter);
 //driver
-app.use('/api-tms-v2/driver', driverRouter);
+app.use('/api-vrs-v2/driver', driverRouter);
 //office
-app.use('/api-tms-v2/office', officeRouter);
+app.use('/api-vrs-v2/office', officeRouter);
 //location
-app.use('/api-tms-v2/location', locationRouter);
+app.use('/api-vrs-v2/location', locationRouter);
 //vehicle
-app.use('/api-tms-v2/vehicle', vehicleRouter);
+app.use('/api-vrs-v2/vehicle', vehicleRouter);
 //order
-app.use('/api-tms-v2/order', orderRouter);
-//item
-app.use('/api-tms-v2/item', itemRouter);
-//transporeon
-app.use('/api-tms-v2/transporeon', transporeonRouter);
-//Petrol
-app.use('/api-tms-v2/petrol', petrolRouter);
-//Depot
-app.use('/api-tms-v2/depot', depotRouter);
+app.use('/api-vrs-v2/order', orderRouter);
 //Utility
-app.use('/api-tms-v2/utility', utilityRouter);
+app.use('/api-vrs-v2/utility', utilityRouter);
 //Center
-app.use('/api-tms-v2/center', centerRouter);
-//Job
-app.use('/api-tms-v2/job', jobRouter);
+app.use('/api-vrs-v2/center', centerRouter);
 //Tracking
-app.use('/api-tms-v2/tracking', trackingRouter);
-//Report
-app.use('/api-tms-v2/report', reportRouter);
-//MasterTime
-app.use('/api-tms-v2/master-time', masterTimeRouter);
+app.use('/api-vrs-v2/tracking', trackingRouter);
+//Station
+app.use('/api-vrs-v2/station', stationRouter);
+//Role
+app.use('/api-vrs-v2/role', roleRouter);
+//User
+app.use('/api-vrs-v2/user', userRouter);
+//Booking
+app.use('/api-vrs-v2/booking', bookingRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

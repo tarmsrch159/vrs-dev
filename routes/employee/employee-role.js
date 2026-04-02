@@ -22,11 +22,16 @@ exports.getEmployeeRoleInformation = async (req, res, next) => {
         }
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (emp_role_code == undefined || lic_code == undefined || action == undefined) {
+        let missing = [];
+        if (emp_role_code == undefined) missing.push('emp_role_code');
+        if (lic_code == undefined) missing.push('lic_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]

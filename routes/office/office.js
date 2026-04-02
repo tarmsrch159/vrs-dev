@@ -24,11 +24,16 @@ exports.getOfficeInformation = async (req, res, next) => {
             page_index -= 1;
         }
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (off_code == undefined || lic_code == undefined || action == undefined) {
+        let missing = [];
+        if (off_code == undefined) missing.push('off_code');
+        if (lic_code == undefined) missing.push('lic_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถดึงข้อมูลได้, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: xresult,
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -164,11 +169,16 @@ exports.removeOffice = async (req, res, next) => {
         let lic_code = req.header('lic_code');
         let { off_code, action } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (off_code == undefined || lic_code == undefined || action == undefined) {
+        let missing = [];
+        if (off_code == undefined) missing.push('off_code');
+        if (lic_code == undefined) missing.push('lic_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถลบข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -245,12 +255,25 @@ exports.setOfficeInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (off_code == undefined || off_tamb_code == undefined || off_amph_code == undefined || off_prov_code == undefined || off_desc == undefined || off_desc_en == undefined || off_number == undefined
-            || off_address == undefined || off_latitude == undefined || off_longitude == undefined || off_area == undefined || action == undefined) {
+        let missing = [];
+        if (off_code == undefined) missing.push('off_code');
+        if (off_tamb_code == undefined) missing.push('off_tamb_code');
+        if (off_amph_code == undefined) missing.push('off_amph_code');
+        if (off_prov_code == undefined) missing.push('off_prov_code');
+        if (off_desc == undefined) missing.push('off_desc');
+        if (off_desc_en == undefined) missing.push('off_desc_en');
+        if (off_number == undefined) missing.push('off_number');
+        if (off_address == undefined) missing.push('off_address');
+        if (off_latitude == undefined) missing.push('off_latitude');
+        if (off_longitude == undefined) missing.push('off_longitude');
+        if (off_area == undefined) missing.push('off_area');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
@@ -338,13 +361,24 @@ exports.addOfficeInformation = async (req, res, next) => {
         } = req.body[0];
 
         //เช็คเฉพาะส่วนที่สำคัญ
-        if (off_desc == undefined || off_desc_en == undefined || off_number == undefined
-            || off_address == undefined || off_latitude == undefined || off_longitude == undefined || off_area == undefined
-            || off_tamb_code == undefined || off_amph_code == undefined || off_prov_code == undefined || action == undefined) {
+        let missing = [];
+        if (off_desc == undefined) missing.push('off_desc');
+        if (off_desc_en == undefined) missing.push('off_desc_en');
+        if (off_number == undefined) missing.push('off_number');
+        if (off_address == undefined) missing.push('off_address');
+        if (off_latitude == undefined) missing.push('off_latitude');
+        if (off_longitude == undefined) missing.push('off_longitude');
+        if (off_area == undefined) missing.push('off_area');
+        if (off_tamb_code == undefined) missing.push('off_tamb_code');
+        if (off_amph_code == undefined) missing.push('off_amph_code');
+        if (off_prov_code == undefined) missing.push('off_prov_code');
+        if (action == undefined) missing.push('action');
+
+        if (missing.length > 0) {
             let response = [{
                 status: 'error',
                 invalid_code: '-1',
-                message: 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง',
+                message: `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`,
                 data: [],
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }]
