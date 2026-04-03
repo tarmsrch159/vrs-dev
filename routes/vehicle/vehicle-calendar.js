@@ -380,7 +380,7 @@ exports.addVehicleCalendarInformation = async (req, res, next) => {
         }
 
         // สร้างรหัสปฏิทินใหม่
-        let veh_cal_code = 'VCL-' + moment().format('x');
+        let veh_cal_code = 'VCL-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // คำสั่ง INSERT
         let script = `INSERT INTO tbl_vehicle_calendar 

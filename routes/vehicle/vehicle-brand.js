@@ -356,7 +356,7 @@ exports.addVehicleBrandInformation = async (req, res, next) => {
         }
 
         // สร้างรหัสยี่ห้อรถใหม่
-        let brand_code = 'BRAND-' + moment().format('x');
+        let brand_code = 'BRAND-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // คำสั่ง INSERT
         let script = `INSERT INTO tbl_vehicle_brand 

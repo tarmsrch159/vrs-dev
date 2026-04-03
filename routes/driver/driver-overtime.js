@@ -202,7 +202,7 @@ exports.addDriverOvertimeInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
         }
 
-        const drv_overtime_code = 'OT-' + moment().format('x');
+        const drv_overtime_code = 'OT-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         const script = `
             INSERT INTO tbl_driver_overtime 

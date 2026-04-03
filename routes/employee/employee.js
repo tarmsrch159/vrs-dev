@@ -302,7 +302,7 @@ exports.addEmployeeInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-4', 'ไม่สามารถบันทึกข้อมูลได้, เนื่องจากข้อมูลผู้ใช้งานซ้ำ');
         }
 
-        const emp_code = 'empl-' + moment().format('x');
+        const emp_code = 'empl-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const emp_encode = xglobal.Base64.encode(emp_userpassword);
         const script = `
             INSERT INTO tbl_employee 

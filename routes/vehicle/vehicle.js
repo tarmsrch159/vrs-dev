@@ -212,7 +212,9 @@ exports.getVehicleInformation = async (req, res, next) => {
                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
             }];
             res.status(200).send(response);
-            await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลรถและหางลาก', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            if (action && action[0]) {
+                await xglobal.action_logs(lic_code, action[0].id, 'ดึงข้อมูลรถและหางลาก', JSON.stringify(req.body[0]), 'ไม่สามารถดึงข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            }
             return;
         }
 
@@ -303,7 +305,9 @@ exports.removeVehicle = async (req, res, next) => {
             response_time: moment().format('YYYY-MM-DD HH:mm:ss').toString()
         }]
         res.status(200).send(response);
-        await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลรถและหางลาก', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        if (action && action[0]) {
+            await xglobal.action_logs(lic_code, action[0].id, 'ลบข้อมูลรถและหางลาก', JSON.stringify(req.body[0]), 'ไม่สามารถลบข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+        }
         return;
     });
 
@@ -415,7 +419,7 @@ exports.addVehicleInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
         }
 
-        const vehicle_code = 'VEH-' + moment().format('x') + Math.floor(Math.random() * 1000000);
+        const vehicle_code = 'VEH-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // 2. ดำเนินการผ่าน Transaction
         const transactionResult = await pgConn.executeTransaction(dbPrefix + lic_code, async (client) => {
@@ -459,7 +463,7 @@ exports.addVehicleInformation = async (req, res, next) => {
             // 2.4 บันทึกรายชื่อผู้ใช้รถประจำ (Sub Records)
             if (Array.isArray(vehicle_users) && vehicle_users.length > 0) {
                 for (const user_code of vehicle_users) {
-                    const scriptUser = `INSERT INTO tbl_vehicle_user (vehicle_code, user_code, ist_dt, veh_user_flag) VALUES ($1, $2, $3, 1);`;
+                    const scriptUser = `INSERT INTO tbl_vehicle_users (vehicle_code, user_code, ist_dt, veh_user_flag) VALUES ($1, $2, $3, 1);`;
                     const paramsUser = [vehicle_code, user_code, moment().format('YYYY-MM-DD HH:mm:ss')];
                     const resUser = await pgConn.executeWithClient(client, scriptUser, paramsUser);
                     if (resUser.code) throw new Error("ไม่สามารถบันทึกข้อมูลผู้ใช้รถประจำได้");

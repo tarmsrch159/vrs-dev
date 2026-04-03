@@ -223,7 +223,7 @@ exports.addBookingInformation = async (req, res, next) => {
             if (Array.isArray(booking_stops) && booking_stops.length > 0) {
                 for (const [index, stop] of booking_stops.entries()) {
                     const stop_seq = index + 1;
-                    const stop_code = 'STP-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000000);
+                    const stop_code = 'STP-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
                     const stopScript = `
                         INSERT INTO tbl_booking_stop 
                         (booking_stop_code, booking_code, station_id, stop_type, est_arrive_time, ist_dt, remark, stop_seq) 

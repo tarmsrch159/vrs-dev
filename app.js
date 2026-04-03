@@ -25,10 +25,12 @@ var trackingRouter = require('./routes/tracking/index');
 var roleRouter = require('./routes/role/index');
 var userRouter = require('./routes/user/index');
 var bookingRouter = require('./routes/booking/index');
+var blackboxRouter = require('./routes/blackbox/index');
+var productRouter = require('./routes/product/index');
 var app = express();
 var cors = require('cors');
 var config = require('./configuration/connection');
-const prod = true;
+const prod = config.prod;
 const paths = path.join(__dirname, 'files');
 const paths_prod = '/root/tms-fuel/back-end/gateway/files/';
 
@@ -173,12 +175,12 @@ exports.xAuthorization = async (req, res) => {
         let lic_code = req.header('lic_code');
         console.log(lic_code);
         if (lic_code == undefined || lic_code.toString() == '') {
-            lic_code = 'vrs01';
+            lic_code = 'vrs_dev';
         }
 
         req.headers['lic_code'] = lic_code; // Ensure it's available for subsequent middleware
 
-        if (lic_code == 'vrs01') {
+        if (lic_code == 'vrs_dev') {
             return true;
         }
 
@@ -358,6 +360,10 @@ app.use('/api-vrs-v2/role', roleRouter);
 app.use('/api-vrs-v2/user', userRouter);
 //Booking
 app.use('/api-vrs-v2/booking', bookingRouter);
+//Blackbox
+app.use('/api-vrs-v2/blackbox', blackboxRouter);
+//Product
+app.use('/api-vrs-v2/product', productRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

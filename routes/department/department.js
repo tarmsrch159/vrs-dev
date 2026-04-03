@@ -205,7 +205,7 @@ exports.addDepartmentInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-4', 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลซ้ำ');
         }
 
-        const dep_code = 'dep-' + moment().format('x');
+        const dep_code = 'dep-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const script = `INSERT INTO tbl_department (div_code, dep_code, dep_desc, dep_flag, ist_dt) VALUES ($1, $2, $3, '1', $4);`;
         const params = [div_code, dep_code, dep_desc, moment().format('YYYY-MM-DD HH:mm:ss')];
 

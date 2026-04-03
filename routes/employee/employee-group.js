@@ -200,7 +200,7 @@ exports.addEmployeeGroupInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-4', 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลซ้ำ');
         }
 
-        const emp_group_code = 'emgp-' + moment().format('x');
+        const emp_group_code = 'emgp-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const script = `INSERT INTO tbl_employee_group (emp_group_code, emp_group_desc, emp_group_flag, ist_dt, off_code) VALUES ($1, $2, '1', $3, $4);`;
         const params = [emp_group_code, emp_group_desc, moment().format('YYYY-MM-DD HH:mm:ss'), off_code];
 

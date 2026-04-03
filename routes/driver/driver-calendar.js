@@ -229,7 +229,7 @@ exports.addDriverCalendarInformation = async (req, res, next) => {
         }
 
         // ======== สร้างรหัสปฏิทินใหม่ (PK) ========
-        const drv_leave_code = 'CAL-' + moment().format('x');
+        const drv_leave_code = 'CAL-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // ======== เตรียมคำสั่ง SQL สำหรับเพิ่มข้อมูลใหม่ ========
         const script = `

@@ -5,7 +5,7 @@ var pool;
 
 // Bypass for localhost: map production db names to local db names
 const DB_NAME_OVERRIDE = {
-    'tms_vrs01': 'vrs_dev'
+    'vrs_dev': 'vrs_dev'
 };
 function resolveDbName(dbname) {
     return DB_NAME_OVERRIDE[dbname] || dbname;

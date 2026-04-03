@@ -110,7 +110,7 @@ exports.addGroupInformation = async (req, res, next) => {
       return sendResponse(res, "error", "-2", `ไม่สามารถบันทึกข้อมูลได้, เนื่องจากชื่อกลุ่ม "${group_name}" มีอยู่ในระบบแล้ว`);
     }
 
-    const groupCode = `GRP-` + moment().format("YYYYMMDDHHmmss") + Math.floor(Math.random() * 10000);
+    const groupCode = `GRP-` + moment().format("YYYYMMDDHHmmss") + Math.floor(Math.random() * 1000);
 
     const script = `
             INSERT INTO tbl_group

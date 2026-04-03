@@ -2,7 +2,7 @@ const config = require('../configuration/connection');
 const pgConn = require('../library/pgConnection');
 const moment = require('moment');
 const axios = require('axios');
-const xproduction = true;
+const xproduction = config.prod;
 const xurl_prod = ``
 const xutl_order_prod = ``
 

@@ -171,7 +171,7 @@ exports.addDivisionInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-4', 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลซ้ำ');
         }
 
-        const div_code = 'div-' + moment().format('x');
+        const div_code = 'div-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const script = `INSERT INTO tbl_division (div_code, div_desc, div_flag, ist_dt) VALUES ($1, $2, '1', $3);`;
         const params = [div_code, div_desc, moment().format('YYYY-MM-DD HH:mm:ss')];
 

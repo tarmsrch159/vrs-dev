@@ -316,7 +316,7 @@ exports.addDriverInformation = async (req, res, next) => {
         }
 
         // ======== สร้างรหัสพนักงานใหม่ (PK) และเข้ารหัสผ่าน (ถ้ามี) ========
-        const driver_code = 'DRV-' + moment().format('x');
+        const driver_code = 'DRV-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const hashedPass = driver_pass ? bcrypt.hashSync(driver_pass, 10) : null;
 
         // ======== เตรียมคำสั่ง SQL สำหรับเพิ่มข้อมูลใหม่ ========

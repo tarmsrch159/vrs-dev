@@ -214,7 +214,7 @@ exports.addPositionInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-4', 'ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลซ้ำ');
         }
 
-        const pos_code = 'pos-' + moment().format('x');
+        const pos_code = 'pos-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const script = `INSERT INTO tbl_position (dep_code, pos_code, pos_desc, pos_salary, pos_flag, ist_dt) VALUES ($1, $2, $3, $4, '1', $5);`;
         const params = [dep_code, pos_code, pos_desc, pos_salary, moment().format('YYYY-MM-DD HH:mm:ss')];
 

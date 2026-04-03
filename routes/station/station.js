@@ -138,7 +138,7 @@ exports.addStationInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-2', 'ไม่สามารถบันทึกข้อมูลได้ เนื่องจากรหัสสถานที่นี้มีอยู่ในระบบแล้ว');
         }
 
-        const station_id = 'STN-' + moment().format('x') + Math.floor(Math.random() * 1000);
+        const station_id = 'STN-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         const script = `
             INSERT INTO tbl_station (

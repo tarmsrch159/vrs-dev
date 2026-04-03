@@ -244,7 +244,7 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
         // ==========================================
         // ไม่ซ้ำ -> Insert ใหม่
         // ==========================================
-        let veh_type_code = 'VEHT-' + moment().format('x');
+        let veh_type_code = 'VEHT-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         let script = `
             INSERT INTO tbl_vehicle_type (
@@ -324,8 +324,8 @@ exports.addVehicleTypeInformation = async (req, res, next) => {
         // ดัก undefined ใน Catch block เผื่อพังตั้งแต่การรับค่าบรรทัดแรกๆ
         const _lic = req.header('lic_code');
 
-        if (_lic && _act_id) {
-            await xglobal.action_logs(_lic, action[0].id, 'เพิ่มข้อมูลประเภทรถ', JSON.stringify(req.body[0]), 'เกิดข้อผิดพลาดภายในระบบ', action[0].value);
+        if (_lic && act_id) {
+            await xglobal.action_logs(_lic, act_id, 'เพิ่มข้อมูลประเภทรถ', JSON.stringify(req.body[0]), 'เกิดข้อผิดพลาดภายในระบบ', act_val);
         }
         return;
     });

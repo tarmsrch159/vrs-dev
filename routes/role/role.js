@@ -183,7 +183,7 @@ exports.addAuthorityInformation = async (req, res, next) => {
             return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
         }
 
-        const authority_code = 'AUT-' + moment().format('x');
+        const authority_code = 'AUT-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
         const script = `INSERT INTO tbl_authority (authority_code, authority_name, ist_dt, authority_flag) VALUES ($1, $2, $3, $4);`;
         const params = [authority_code, authority_name, moment().format('YYYY-MM-DD HH:mm:ss'), 1];
 

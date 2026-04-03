@@ -378,7 +378,7 @@ exports.addVehicleSubmodelInformation = async (req, res, next) => {
         }
 
         // สร้างรหัสรุ่นย่อยรถใหม่
-        let submodel_code = 'SUB-' + moment().format('x');
+        let submodel_code = 'SUB-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // คำสั่ง INSERT
         let script = `INSERT INTO tbl_vehicle_submodel 

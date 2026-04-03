@@ -368,7 +368,7 @@ exports.addVehicleModelInformation = async (req, res, next) => {
         }
 
         // สร้างรหัสรุ่นรถใหม่
-        let model_code = 'MODEL-' + moment().format('x');
+        let model_code = 'MODEL-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // คำสั่ง INSERT
         let script = `INSERT INTO tbl_vehicle_model 

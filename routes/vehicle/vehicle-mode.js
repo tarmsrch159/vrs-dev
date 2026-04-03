@@ -357,7 +357,7 @@ exports.addVehicleModeInformation = async (req, res, next) => {
         }
 
         // สร้างรหัสโหมดรถใหม่
-        let mode_code = 'MODE-' + moment().format('x');
+        let mode_code = 'MODE-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // คำสั่ง INSERT
         let script = `INSERT INTO tbl_vehicle_mode 

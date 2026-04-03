@@ -309,7 +309,7 @@ exports.addUserInformation = async (req, res, next) => {
         }
 
         let transactionResult = await pgConn.executeTransaction(dbPrefix + lic_code, async (client) => {
-            const user_code = 'USER-' + moment().format('x');
+            const user_code = 'USER-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
             const user_encode = bcrypt.hashSync(user_password, 10);
 
             const script = `
@@ -330,7 +330,7 @@ exports.addUserInformation = async (req, res, next) => {
 
             if (Array.isArray(users_approver) && users_approver.length > 0) {
                 for (const approver_code of users_approver) {
-                    let usr_apr_code = 'USERAPR-' + moment().format('x') + Math.floor(Math.random() * 1000000);
+                    let usr_apr_code = 'USERAPR-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
                     const scriptDriver = `INSERT INTO tbl_user_approver (usr_apr_code, user_code, user_approver_code, ist_dt, approve_flag) VALUES ($1, $2, $3, $4, $5);`;
                     const paramsDriver = [usr_apr_code, user_code, approver_code, moment().format('YYYY-MM-DD HH:mm:ss'), 1];
                     const resDriver = await pgConn.executeWithClient(client, scriptDriver, paramsDriver);
