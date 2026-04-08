@@ -255,3 +255,112 @@ exports.addBookingInformation = async (req, res, next) => {
         return sendResponse(res, 'error', '-4', 'เกิดข้อผิดพลาดภายในระบบ');
     }
 };
+
+// =========================================================================
+// API อนุมัติข้อมูลการจอง (Approve Booking Information)
+// =========================================================================
+exports.setBookingInformation = async (req, res, next) => {
+    try {
+        const lic_code = req.header('lic_code');
+        const {
+            booking_code,
+            booking_status,
+            action
+        } = req.body[0] || {};
+
+        const booking_codeArr = Array.isArray(booking_code) ? booking_code : [booking_code];
+        const booking_codeIn = booking_codeArr.map(c => `'${c}'`).join(', ');
+
+        const missing = [];
+        if (!lic_code) missing.push('lic_code');
+        if (!booking_code || booking_codeArr.length === 0) missing.push('booking_code');
+        if (!booking_status) missing.push('booking_status');
+        if (!action) missing.push('action');
+
+        if (missing.length > 0) {
+            return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล,  เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
+        }
+
+        const script = `
+            UPDATE tbl_booking 
+            SET booking_status = $1, mdf_dt = $2::timestamp
+            WHERE booking_code IN (${booking_codeIn});
+        `;
+        const params = [booking_status, moment().format('YYYY-MM-DD HH:mm:ss')];
+
+        const result = await pgConn.execute2params(script, params);
+
+        if (result.code) {
+            await xglobal.action_logs(lic_code, action[0].id, 'อนุมัติข้อมูลการจอง', JSON.stringify(req.body[0]), 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ', action[0].value);
+            return sendResponse(res, 'error', '-3', 'ไม่สามารถบันทึกข้อมูล, กรุณาติดต่อเจ้าหน้าที่ผู้ดูแลระบบ');
+        }
+
+        // ดึงข้อมูลที่อัปเดตแล้วส่งกลับไปด้วย พร้อมรายละเอียดต่างๆ
+        const getScript = `
+            SELECT 
+                booking.booking_code, 
+               
+                booking.booking_status,
+                usr_agg.booking_users_list as booking_users,
+                stop_agg.booking_stops_list as booking_stops,
+                tbl_u.booking_users as user_reserve
+            FROM tbl_booking booking
+            LEFT JOIN tbl_vehicle vehicle ON booking.vehicle_code = vehicle.vehicle_code
+            LEFT JOIN tbl_driver driver ON booking.driver_code = driver.driver_code
+            LEFT JOIN tbl_station origin ON booking.origin_id = origin.station_id
+            LEFT JOIN tbl_station dest ON booking.dest_id = dest.station_id
+            LEFT JOIN tbl_travel_type travel_type ON booking.travel_type_code = travel_type.travel_type_code
+            LEFT JOIN tbl_users tbl_user ON booking.user_code = tbl_user.user_code
+            LEFT JOIN (
+             SELECT user_code ,JSONB_AGG(
+                JSONB_BUILD_OBJECT(
+                    'code' , tbl_u.user_code,
+                    'name' , tbl_u.name
+                )
+             ) as booking_users
+             FROM tbl_users tbl_u
+             GROUP BY tbl_u.user_code
+            ) tbl_u ON tbl_u.user_code = booking.user_code
+            LEFT JOIN (
+                SELECT 
+                    tbl_booking_users.booking_code, 
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
+                            'code' , tbl_booking_users.user_code,
+                            'name' , users.name
+                        )
+                    ) as booking_users_list
+                FROM tbl_booking_users 
+                LEFT JOIN tbl_users users ON tbl_booking_users.user_code = users.user_code
+                GROUP BY tbl_booking_users.booking_code
+            ) usr_agg ON usr_agg.booking_code = booking.booking_code
+             LEFT JOIN (
+                SELECT 
+                    tbl_booking_stop.booking_code, 
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
+                            'station_name' , tbl_station.station_name,
+                            'stop_seq' , tbl_booking_stop.stop_seq,
+                            'stop_type', tbl_booking_stop.stop_type
+                        )
+                    ) as booking_stops_list
+                FROM tbl_booking_stop 
+                LEFT JOIN tbl_station ON tbl_booking_stop.station_id = tbl_station.station_id
+                GROUP BY tbl_booking_stop.booking_code
+            ) stop_agg ON stop_agg.booking_code = booking.booking_code
+            WHERE booking.booking_code IN (${booking_codeIn});
+        `;
+        const getResult = await pgConn.get(dbPrefix + lic_code, getScript, config.connectionString());
+        let updatedData = [];
+        if (!getResult.code && getResult.data.length > 0) {
+            updatedData = JSON.parse(JSON.stringify(getResult.data).replace(/\:null/gi, "\:\"\""));
+        }
+
+        await xglobal.action_logs(lic_code, action[0].id, 'อนุมัติข้อมูลการจอง', JSON.stringify(req.body[0]), 'success', action[0].value);
+        return sendResponse(res, 'success', '0', 'บันทึกข้อมูลการอนุมัติสำเร็จ', updatedData);
+
+    } catch (err) {
+        console.error(err);
+        return sendResponse(res, 'error', '-4', 'เกิดข้อผิดพลาดภายในระบบ');
+    }
+};
