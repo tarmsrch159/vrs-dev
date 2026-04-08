@@ -202,7 +202,7 @@ exports.setBookingApproveInformation = async (req, res, next) => {
     try {
         const lic_code = req.header('lic_code');
         const {
-            booking_code, // Status ที่จะ Update เช่น '1' (Approve), '2' (Reject)
+            booking_code,
             booking_status,
             action
         } = req.body[0] || {};
