@@ -299,7 +299,6 @@ exports.setBookingInformation = async (req, res, next) => {
         const getScript = `
             SELECT 
                 booking.booking_code, 
-               
                 booking.booking_status,
                 usr_agg.booking_users_list as booking_users,
                 stop_agg.booking_stops_list as booking_stops,
