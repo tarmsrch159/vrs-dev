@@ -406,7 +406,7 @@ exports.addOfficeInformation = async (req, res, next) => {
                 }
             }
 
-            let off_code = 'off-' + moment().format('x');
+            let off_code = 'off-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
             script = `insert into tbl_office (off_code, off_desc, off_desc_en, off_number, off_address, 
             off_tamb_code, off_amph_code, off_prov_code, off_latitude, off_longitude, off_area, off_flag, ist_dt)
             values ('${off_code}', '${off_desc}', '${off_desc_en}', '${off_number}', '${off_address}', '${off_tamb_code}', 

@@ -43,8 +43,8 @@ exports.getUserInformation = async (req, res, next) => {
 
         const dataScript = `
             SELECT 
-                u.user_code, u.user_name, u.user_authority, u.emp_code, u.name, u.photo, u.email, u.mobile, u.gender,
-                g.group_name, u.default_lang, u.ist_dt, u.customer_id, u.id_card, u.authority_code,
+                u.user_code, u.user_name, u.emp_code, u.name, u.photo, u.email, u.mobile, u.gender,
+                g.group_name, u.default_lang, u.ist_dt, u.customer_id, u.id_card, u.authority_code, authority.authority_name,
                 ua.users_approver
             FROM tbl_users u
             LEFT JOIN tbl_group g ON u.user_group_code = g.group_code
@@ -62,6 +62,7 @@ exports.getUserInformation = async (req, res, next) => {
                 WHERE tbl_user_approver.rm_dt IS NULL
                 GROUP BY tbl_user_approver.user_code
             ) ua ON u.user_code = ua.user_code
+            LEFT JOIN tbl_authority authority ON u.authority_code = authority.authority_code
             ${whereClause}
             ORDER BY u.ist_dt DESC 
             OFFSET (${offset} * ${page_limit}) LIMIT ${page_limit};

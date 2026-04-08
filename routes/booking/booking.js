@@ -173,7 +173,8 @@ exports.addBookingInformation = async (req, res, next) => {
             end_datetime,
             trip_purpose,
             user_code,
-            travel_type_code
+            travel_type_code,
+            reserve_user
         } = booking_data;
 
         // ดึง origin_id และ dest_id จาก booking_stops

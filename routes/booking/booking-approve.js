@@ -201,15 +201,18 @@ exports.getBookingApproveInformation = async (req, res, next) => {
 exports.setBookingApproveInformation = async (req, res, next) => {
     try {
         const lic_code = req.header('lic_code');
-        const { booking_code } = req.query || {};
         const {
-            booking_status, // Status ที่จะ Update เช่น '1' (Approve), '2' (Reject)
+            booking_code, // Status ที่จะ Update เช่น '1' (Approve), '2' (Reject)
+            booking_status,
             action
         } = req.body[0] || {};
 
+        const booking_codeArr = Array.isArray(booking_code) ? booking_code : [booking_code];
+        const booking_codeIn = booking_codeArr.map(c => `'${c}'`).join(', ');
+
         const missing = [];
         if (!lic_code) missing.push('lic_code');
-        if (!booking_code) missing.push('booking_code');
+        if (!booking_code || booking_codeArr.length === 0) missing.push('booking_code');
         if (!booking_status) missing.push('booking_status');
         if (!action) missing.push('action');
 
@@ -219,10 +222,10 @@ exports.setBookingApproveInformation = async (req, res, next) => {
 
         // ตรวจสอบสิทธิ์ว่า user คนนี้ (action[0].id) มีสิทธิ์อนุมัติใบจองนี้หรือไม่
         const checkScript = `
-            SELECT booking.user_code 
+            SELECT booking.booking_code 
             FROM tbl_booking booking
             INNER JOIN tbl_user_approver approver ON booking.user_code = approver.user_code
-            WHERE booking.booking_code = '${booking_code}' 
+            WHERE booking.booking_code IN (${booking_codeIn}) 
               AND approver.user_approver_code = '${action[0].id}' 
               AND approver.approve_flag = 1
               AND booking.rm_dt IS NULL;
@@ -230,16 +233,23 @@ exports.setBookingApproveInformation = async (req, res, next) => {
         const tbl_check = await pgConn.get(dbPrefix + lic_code, checkScript, config.connectionString());
 
         if (!tbl_check || tbl_check.code || tbl_check.data.length === 0) {
-            await xglobal.action_logs(lic_code, action[0].id, 'อนุมัติข้อมูลการจอง', JSON.stringify(req.body[0]), `คุณไม่มีสิทธิ์อนุมัติใบจองนี้ (${booking_code})`, action[0].value);
+            await xglobal.action_logs(lic_code, action[0].id, 'อนุมัติข้อมูลการจอง', JSON.stringify(req.body[0]), `คุณไม่มีสิทธิ์อนุมัติใบจองชุดนี้ (${booking_codeIn})`, action[0].value);
             return sendResponse(res, 'error', '-1', 'คุณไม่มีสิทธิ์อนุมัติใบจองนี้');
+        }
+
+        if (tbl_check.data.length !== booking_codeArr.length) {
+            const foundCodes = tbl_check.data.map(d => d.booking_code);
+            const missingCodes = booking_codeArr.filter(c => !foundCodes.includes(c));
+            await xglobal.action_logs(lic_code, action[0].id, 'อนุมัติข้อมูลการจอง', JSON.stringify(req.body[0]), `พบข้อมูลจองที่ไม่สามารถอนุมัติได้: ${missingCodes.join(', ')}`, action[0].value);
+            return sendResponse(res, 'error', '-1', `พบข้อมูลจองที่ไม่สามารถอนุมัติได้: ${missingCodes.join(', ')}`);
         }
 
         const script = `
             UPDATE tbl_booking 
             SET booking_status = $1, mdf_dt = $2::timestamp
-            WHERE booking_code = $3;
+            WHERE booking_code IN (${booking_codeIn});
         `;
-        const params = [booking_status, moment().format('YYYY-MM-DD HH:mm:ss'), booking_code];
+        const params = [booking_status, moment().format('YYYY-MM-DD HH:mm:ss')];
 
         const result = await pgConn.execute2params(script, params);
 
@@ -313,7 +323,7 @@ exports.setBookingApproveInformation = async (req, res, next) => {
                 LEFT JOIN tbl_station ON tbl_booking_stop.station_id = tbl_station.station_id
                 GROUP BY tbl_booking_stop.booking_code
             ) stop_agg ON stop_agg.booking_code = booking.booking_code
-            WHERE booking.booking_code = '${booking_code}';
+            WHERE booking.booking_code IN (${booking_codeIn});
         `;
         const getResult = await pgConn.get(dbPrefix + lic_code, getScript, config.connectionString());
         let updatedData = [];

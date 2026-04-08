@@ -11,18 +11,27 @@ const connectionStringOnProd = {
   database: "tms_aos01"
 }
 
-const connectionStringOnLocalhost = {
-  user: "tanachai_ho",
-  password: "123456",
-  host: "host.docker.internal",
+const connectionStringOnDev = {
+  user: "postgres",
+  password: "reP@ssw0rd778900",
+  host: "203.150.210.25",
   port: 5432,
   database: "vrs_dev"
 }
 
+// ============ Local ===========
+// const connectionStringOnLocalhost = {
+//   user: "tanachai_ho",
+//   password: "123456",
+//   host: "host.docker.internal",
+//   port: 5432,
+//   database: "vrs_dev"
+// }
+
 exports.prod = prod;
 
 exports.connectionString = () => {
-  return (prod == true) ? connectionStringOnProd : connectionStringOnLocalhost;
+  return (prod == true) ? connectionStringOnProd : connectionStringOnDev;
 }
 
 exports.authWebsite = () => {

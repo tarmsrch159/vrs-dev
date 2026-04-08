@@ -2275,7 +2275,7 @@ exports.addOrderInformation = async (req, res, next) => {
 
         let script = ``;
         // =========== Order-No Mockup ===========  
-        let order_no = 'ord-' + moment().format('x');
+        let order_no = 'ord-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
 
         // ====================== เช็ค Validate item_quantity ======================
         if (order_item && Array.isArray(order_item) && order_item.length > 0) {
@@ -2570,7 +2570,7 @@ exports.setOrderInformation = async (req, res, next) => {
 
 
             let oldOrder = checkOrderNo.data[0];
-            let new_order_no = 'ord-' + moment().format('x');
+            let new_order_no = 'ord-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
             let addOrderScript = `INSERT INTO tbl_order(
                 order_no, order_type, order_group, chanel, division, sold_to, ship_to,
                 cus_ref, cus_date_ref, po_name, order_by, ship_cond, pay_term,

@@ -206,7 +206,7 @@ exports.addOrderType = async (req, res, next) => {
                 return;
             }
 
-            let ord_type_code = `otyp-${moment().format('x')}${i}`
+            let ord_type_code = 'otyp-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
             script = `INSERT INTO tbl_order_type 
             (ord_type_code, ord_type_desc, ord_type_flag, ist_dt, mdf_dt, rm_dt) 
             VALUES ($1, $2, '1', $3, NULL, NULL);`

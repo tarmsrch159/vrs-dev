@@ -310,7 +310,7 @@ exports.addLicenseFuelInformation = async (req, res, next) => {
             res.status(200).send(response);
             return
         } else {
-            let license_code = 'lic-' + moment().format('x');
+            let license_code = 'lic-' + moment().format('YYYYMMDDHHmmss') + Math.floor(Math.random() * 1000);
             let license_number = await xglobal.generateRandomString(3);
             let license_count = 0;
 
