@@ -217,7 +217,7 @@ exports.setBookingApproveInformation = async (req, res, next) => {
         if (!action) missing.push('action');
 
         if (missing.length > 0) {
-            return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
+            return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล,  เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
         }
 
         // ตรวจสอบสิทธิ์ว่า user คนนี้ (action[0].id) มีสิทธิ์อนุมัติใบจองนี้หรือไม่
