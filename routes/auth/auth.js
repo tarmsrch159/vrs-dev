@@ -6,7 +6,6 @@ const bcrypt = require('bcrypt');
 const dbPrefix = config.dbPrefix();
 
 //example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
-//example https://stackoverflow.com/questions/6182315/how-can-i-do-base64-encoding-in-node-js
 exports.authUserInformation = async (req, res, next) => {
     var xresult = [];
 
@@ -74,16 +73,16 @@ exports.authUserInformation = async (req, res, next) => {
 
                     tbl_temporary.data = JSON.parse(JSON.stringify([userRecord]).replace(/\:null/gi, "\:\"\""));
 
-                    xglobal.sendResponse(res, 'success', '0', '', tbl_temporary.data);
+                    xglobal.sendResponse(res, 'success', '0', 'เข้าสู่ระบบสำเร็จ', tbl_temporary.data);
                     await xglobal.action_logs(lic_code, tbl_temporary.data[0].user_code, 'เข้าสู่ระบบ', JSON.stringify({ user_name: user_name }), 'success', tbl_temporary.data[0].off_code);
                     return;
                 } else {
                     // รหัสผ่านไม่ถูกต้อง (จำลองเสมือนหาข้อมูลไม่เจอ เพื่อป้องกันการเดา User)
-                    xglobal.sendResponse(res, 'success', '0', 'success', "รหัสผ่านไม่ถูกต้อง");
+                    xglobal.sendResponse(res, 'success', '0', 'รหัสผ่านไม่ถูกต้อง', xresult);
                     return;
                 }
             } else {
-                xglobal.sendResponse(res, 'success', '0', 'success', "ไม่พบผู้ใช้งาน");
+                xglobal.sendResponse(res, 'success', '0', 'ไม่พบผู้ใช้งาน', xresult);
                 return;
             }
         } else {
@@ -102,18 +101,17 @@ exports.authUserInformation = async (req, res, next) => {
     });
 }
 
-exports.resetEmployeeInformation = async (req, res, next) => {
+exports.resetUserInformation = async (req, res, next) => {
 
     return (async () => {
 
         debugger
         let lic_code = req.header('lic_code');
-        let { emp_username, emp_email, emp_userpassword } = req.body[0];
+        let { user_name, user_password } = req.body[0];
         //เช็คเฉพาะส่วนที่สำคัญ
         let missing = [];
-        if (emp_username == undefined) missing.push('emp_username');
-        if (emp_email == undefined) missing.push('emp_email');
-        if (emp_userpassword == undefined) missing.push('emp_userpassword');
+        if (user_name == undefined) missing.push('user_name');
+        if (user_password == undefined) missing.push('user_password');
 
         if (missing.length > 0) {
             let response = [{
@@ -127,43 +125,24 @@ exports.resetEmployeeInformation = async (req, res, next) => {
         } else {
 
             let script = ``;
-            if (emp_username != '' && emp_email != '' && emp_userpassword != '') {
+            if (user_name != '' && user_password != '') {
                 script = `SELECT 
-                    u.user_code as emp_code, 
-                    u.user_name as emp_username, 
-                    u.user_password as emp_userpassword, 
-                    e.emp_ref_code, 
-                    u.name as emp_name, 
-                    e.emp_surname, 
-                    u.mobile as emp_mobile_number,
-                    u.email as emp_email, 
-                    e.emp_div_code, 
-                    div_desc as emp_div_desc, 
-                    e.emp_dep_code, 
-                    dep_desc as emp_dep_desc, 
-                    e.emp_pos_code, 
-                    pos_desc as emp_pos_desc, 
-                    u.user_group_code as emp_group_code, 
-                    g.group_name as emp_group_desc, 
-                    u.gender as emp_gender, 
-                    u.authority_code as emp_role_code, 
-                    authority.authority_name as emp_role_desc, 
-                    u.photo as emp_image_profile, 
-                    e.off_code, 
-                    tbl_office.off_desc
-    
-                FROM tbl_users u
-                LEFT JOIN tbl_employee e ON u.emp_code = e.emp_code
-                LEFT JOIN tbl_division on e.emp_div_code = tbl_division.div_code
-                LEFT JOIN tbl_department on e.emp_div_code = tbl_department.div_code
-                and e.emp_dep_code = tbl_department.dep_code
-                LEFT JOIN tbl_position on e.emp_div_code = tbl_position.div_code
-                and e.emp_dep_code = tbl_position.dep_code
-                and e.emp_pos_code = tbl_position.pos_code
-                LEFT JOIN tbl_group g on u.user_group_code = g.group_code
-                LEFT JOIN tbl_authority authority on u.authority_code = authority.authority_code
-                LEFT JOIN tbl_office on e.off_code = tbl_office.off_code 
-                WHERE u.user_flag = '1' and u.rm_dt is null and u.user_name = '${emp_username}' and u.email = '${emp_email}'`;
+                      u.user_password, 
+                    u.user_code, 
+                    u.user_name, 
+                    u.name, 
+                    u.mobile, 
+                    u.email, 
+                    u.user_group_code, 
+                    g.group_name, 
+                    u.gender, 
+                    u.authority_code, 
+                    authority.authority_name, 
+                    u.photo
+                    FROM tbl_users u
+                    LEFT JOIN tbl_group g ON u.user_group_code = g.group_code
+                    LEFT JOIN tbl_authority authority ON u.authority_code = authority.authority_code
+                WHERE u.user_flag = '1' and u.rm_dt is null and u.user_name = '${user_name}'`;
 
                 script += ` order by u.name asc;`
 
@@ -173,11 +152,11 @@ exports.resetEmployeeInformation = async (req, res, next) => {
                     if (tbl_temporary.data.length > 0) {
                         tbl_temporary.data = JSON.parse(JSON.stringify(tbl_temporary.data).replace(/\:null/gi, "\:\"\""));
 
-                        const new_password_encode = bcrypt.hashSync(emp_userpassword, 10);
+                        const new_password_encode = bcrypt.hashSync(user_password, 10);
                         script = `update tbl_users set 
                         user_password = '${new_password_encode}',
                         mdf_dt = '${moment().format('YYYY-MM-DD HH:mm:ss')}' 
-                        where user_code = '${tbl_temporary.data[0].emp_code}';`
+                        where user_code = '${tbl_temporary.data[0].user_code}';`
 
                         let tbl_temporary0 = await pgConn.execute(dbPrefix + lic_code, script, config.connectionString());
                         if (!tbl_temporary0.code) {
@@ -185,7 +164,7 @@ exports.resetEmployeeInformation = async (req, res, next) => {
                             let response = [{
                                 status: 'success',
                                 invalid_code: '0',
-                                message: '',
+                                message: 'เปลียนรหัสผ่านเรียบร้อยแล้ว',
                                 data: [],
                                 response_time: moment().format('YYYY-MM-DD HH:mm:ss')
                             }]

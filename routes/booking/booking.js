@@ -13,7 +13,7 @@ exports.getBookingInformation = async (req, res, next) => {
     try {
         const lic_code = req.header('lic_code');
         let {
-            booking_code = 'ALL', action, page_index = 1, page_limit = 10
+            booking_code = 'ALL', action, page_index = 1, page_limit = 10, travel_type_code = 'ALL'
         } = req.body[0] || {};
 
         // ตรวจสอบพารามิเตอร์ที่จำเป็น
@@ -30,7 +30,8 @@ exports.getBookingInformation = async (req, res, next) => {
         // สร้างเงื่อนไข WHERE
         const conditions = ["booking.rm_dt IS NULL"];
 
-        if (String(booking_code).toUpperCase() !== 'ALL') conditions.push(`booking_code = '${booking_code}'`);
+        if (String(booking_code).toUpperCase() !== 'ALL') conditions.push(`booking.booking_code = '${booking_code}'`);
+        if (String(travel_type_code).toUpperCase() !== 'ALL') conditions.push(`booking.travel_type_code = '${travel_type_code}'`);
 
         const whereClause = "WHERE " + conditions.join(" AND ");
 
