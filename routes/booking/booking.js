@@ -59,8 +59,8 @@ exports.getBookingInformation = async (req, res, next) => {
                 origin.station_name as origin_name,
                 dest.station_name as dest_name,
                 booking.trip_purpose, 
-                booking.start_datetime, 
-                booking.end_datetime, 
+                booking.origin_datetime, 
+                booking.destination_datetime, 
                 booking.ist_dt,
                 booking.booking_status,
                 usr_agg.booking_users_list as booking_users,
@@ -200,7 +200,6 @@ exports.addBookingInformation = async (req, res, next) => {
     const {
       booking_data,
       booking_users = [],
-      booking_stops = [],
       action,
     } = req.body[0] || {};
 
@@ -221,28 +220,29 @@ exports.addBookingInformation = async (req, res, next) => {
     const {
       vehicle_code,
       driver_code,
-      start_datetime,
-      end_datetime,
+      origin_datetime,
+      destination_datetime,
       trip_purpose,
       user_code,
       travel_type_code,
+      dest_id,
+      origin_id,
+      time_spent,
+      booking_remark,
       reserve_user,
     } = booking_data;
 
-    // ดึง origin_id และ dest_id จาก booking_stops
-    let origin_id = null;
-    let dest_id = null;
 
-    if (booking_stops.length > 0) {
-      const origin_stop = booking_stops.find(
-        (stop) => stop.stop_type === "Origin",
-      );
-      const dest_stop = booking_stops.find(
-        (stop) => stop.stop_type === "Destination",
-      );
-      if (origin_stop) origin_id = origin_stop.station_id;
-      if (dest_stop) dest_id = dest_stop.station_id;
-    }
+    // if (booking_stops.length > 0) {
+    //   const origin_stop = booking_stops.find(
+    //     (stop) => stop.stop_type === "Origin",
+    //   );
+    //   const dest_stop = booking_stops.find(
+    //     (stop) => stop.stop_type === "Destination",
+    //   );
+    //   if (origin_stop) origin_id = origin_stop.station_id;
+    //   if (dest_stop) dest_id = dest_stop.station_id;
+    // }
 
     let transactionResult = await pgConn.executeTransaction(
       dbPrefix + lic_code,
@@ -258,10 +258,10 @@ exports.addBookingInformation = async (req, res, next) => {
                 INSERT INTO tbl_booking 
                 (
                     booking_code, vehicle_code, driver_code, origin_id, dest_id, 
-                    start_datetime, end_datetime, trip_purpose, ist_dt, 
-                    booking_flag, booking_status, user_code, travel_type_code
+                    origin_datetime, destination_datetime, trip_purpose, ist_dt, 
+                    booking_flag, booking_status, user_code, travel_type_code, time_spent, booking_remark
                 ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
             `;
         const bookingParams = [
           booking_code,
@@ -269,14 +269,16 @@ exports.addBookingInformation = async (req, res, next) => {
           driver_code,
           origin_id,
           dest_id,
-          start_datetime,
-          end_datetime,
+          origin_datetime,
+          destination_datetime,
           trip_purpose,
           now,
           1,
           0,
           user_code,
           travel_type_code,
+          time_spent,
+          booking_remark
         ];
 
         const resBooking = await pgConn.executeWithClient(
@@ -303,39 +305,39 @@ exports.addBookingInformation = async (req, res, next) => {
         }
 
         // ========= เพิ่มข้อมูลจุดแวะพัก tbl_booking_stop =========
-        if (Array.isArray(booking_stops) && booking_stops.length > 0) {
-          for (const [index, stop] of booking_stops.entries()) {
-            const stop_seq = index + 1;
-            const stop_code =
-              "STP-" +
-              moment().format("YYYYMMDDHHmmss") +
-              Math.floor(Math.random() * 1000);
-            const stopScript = `
-                        INSERT INTO tbl_booking_stop 
-                        (booking_stop_code, booking_code, station_id, stop_type, est_arrive_time, ist_dt, remark, stop_seq) 
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
-                    `;
-            const stopParams = [
-              stop_code,
-              booking_code,
-              stop.station_id,
-              stop.stop_type,
-              stop.est_arrive_time,
-              now,
-              stop.remark,
-              stop_seq,
-            ];
-            const resStop = await pgConn.executeWithClient(
-              client,
-              stopScript,
-              stopParams,
-            );
-            if (resStop.code)
-              throw new Error(
-                `ไม่สามารถบันทึกข้อมูลจุดแวะพักได้ (${stop.station_id})`,
-              );
-          }
-        }
+        // if (Array.isArray(booking_stops) && booking_stops.length > 0) {
+        //   for (const [index, stop] of booking_stops.entries()) {
+        //     const stop_seq = index + 1;
+        //     const stop_code =
+        //       "STP-" +
+        //       moment().format("YYYYMMDDHHmmss") +
+        //       Math.floor(Math.random() * 1000);
+        //     const stopScript = `
+        //                 INSERT INTO tbl_booking_stop 
+        //                 (booking_stop_code, booking_code, station_id, stop_type, est_arrive_time, ist_dt, remark, stop_seq) 
+        //                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+        //             `;
+        //     const stopParams = [
+        //       stop_code,
+        //       booking_code,
+        //       stop.station_id,
+        //       stop.stop_type,
+        //       stop.est_arrive_time,
+        //       now,
+        //       stop.remark,
+        //       stop_seq,
+        //     ];
+        //     const resStop = await pgConn.executeWithClient(
+        //       client,
+        //       stopScript,
+        //       stopParams,
+        //     );
+        //     if (resStop.code)
+        //       throw new Error(
+        //         `ไม่สามารถบันทึกข้อมูลจุดแวะพักได้ (${stop.station_id})`,
+        //       );
+        //   }
+        // }
 
         return { booking_code };
       },
@@ -379,7 +381,7 @@ exports.addBookingInformation = async (req, res, next) => {
 // =========================================================================
 // API อนุมัติข้อมูลการจอง (Approve Booking Information)
 // =========================================================================
-exports.setBookingInformation = async (req, res, next) => {
+exports.setBookingApproveInformation = async (req, res, next) => {
   try {
     const lic_code = req.header("lic_code");
     const { booking_code, booking_status, action } = req.body[0] || {};
@@ -514,6 +516,163 @@ exports.setBookingInformation = async (req, res, next) => {
     );
   } catch (err) {
     console.error(err);
+    return sendResponse(res, "error", "-4", "เกิดข้อผิดพลาดภายในระบบ");
+  }
+};
+
+// =========================================================================
+// API แก้ไขข้อมูลการจอง 
+// =========================================================================
+exports.setBookingInformation = async (req, res, next) => {
+  try {
+    const lic_code = req.header("lic_code");
+    const { booking_code } = req.query || {};
+    const {
+      vehicle_code,
+      driver_code,
+      origin_datetime,
+      destination_datetime,
+      trip_purpose,
+      user_code,
+      travel_type_code,
+      dest_id,
+      origin_id,
+      time_spent,
+      booking_remark,
+      action
+    } = req.body[0] || {};
+
+    const missing = [];
+    if (!lic_code) missing.push("lic_code");
+    if (!booking_code) missing.push("booking_code");
+    if (!action) missing.push("action");
+
+    if (missing.length > 0) {
+      return sendResponse(
+        res,
+        "error",
+        "-1",
+        `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(", ")})`,
+      );
+    }
+
+    const transactionResult = await pgConn.executeTransaction(
+      dbPrefix + lic_code,
+      async (client) => {
+        const now = moment().format("YYYY-MM-DD HH:mm:ss");
+
+        // ตรวจสอบว่ามีข้อมูลการจองนี้อยู่จริง
+        const checkScript = `SELECT * FROM tbl_booking WHERE booking_code = $1 AND rm_dt IS NULL;`;
+        const resCheck = await pgConn.executeWithClient(client, checkScript, [booking_code]);
+        if (resCheck.code || !resCheck.data || resCheck.data.length === 0) {
+          throw new Error(`ไม่พบข้อมูลการจองที่ต้องการแก้ไข (${booking_code})`);
+        }
+        const currentBooking = resCheck.data[0];
+
+        // กำหนดค่าใหม่หรือใช้ค่าเดิมหากไม่ได้ส่งมา
+        const v_code = vehicle_code !== undefined ? vehicle_code : currentBooking.vehicle_code;
+        const d_code = driver_code !== undefined ? driver_code : currentBooking.driver_code;
+        const o_id = origin_id !== undefined ? origin_id : currentBooking.origin_id;
+        const d_id = dest_id !== undefined ? dest_id : currentBooking.dest_id;
+        const s_dt = origin_datetime !== undefined ? origin_datetime : currentBooking.origin_datetime;
+        const e_dt = destination_datetime !== undefined ? destination_datetime : currentBooking.destination_datetime;
+        const t_purpose = trip_purpose !== undefined ? trip_purpose : currentBooking.trip_purpose;
+        const u_code = user_code !== undefined ? user_code : currentBooking.user_code;
+        const t_type_code = travel_type_code !== undefined ? travel_type_code : currentBooking.travel_type_code;
+        const t_spent = time_spent !== undefined ? time_spent : currentBooking.time_spent;
+        const b_remark = booking_remark !== undefined ? booking_remark : currentBooking.booking_remark;
+
+        // แก้ไขข้อมูลการจองใน tbl_booking
+        const updateScript = `
+            UPDATE tbl_booking 
+            SET 
+                vehicle_code = $1, 
+                driver_code = $2, 
+                origin_id = $3, 
+                dest_id = $4, 
+                origin_datetime = $5, 
+                destination_datetime = $6, 
+                trip_purpose = $7, 
+                user_code = $8, 
+                travel_type_code = $9, 
+                time_spent = $10, 
+                booking_remark = $11, 
+                mdf_dt = $12::timestamp
+            WHERE booking_code = $13;
+        `;
+        const updateParams = [
+          v_code,
+          d_code,
+          o_id,
+          d_id,
+          s_dt,
+          e_dt,
+          t_purpose,
+          u_code,
+          t_type_code,
+          t_spent,
+          b_remark,
+          now,
+          booking_code
+        ];
+
+        const resUpdate = await pgConn.executeWithClient(client, updateScript, updateParams);
+        if (resUpdate.code) throw new Error("ไม่สามารถแก้ไขข้อมูลการจองได้");
+
+
+        return { booking_code };
+      },
+      config.connectionString(),
+    );
+
+    if (transactionResult.code) {
+      await xglobal.action_logs(
+        lic_code,
+        action[0].id,
+        "แก้ไขข้อมูลการจอง",
+        JSON.stringify(req.body[0]),
+        transactionResult.message,
+        action[0].value,
+      );
+      return sendResponse(
+        res,
+        "error",
+        "-3",
+        `ไม่สามารถบันทึกข้อมูล, เนื่องจาก: ${transactionResult.message}`,
+      );
+    }
+
+
+
+    await xglobal.action_logs(
+      lic_code,
+      action[0].id,
+      "แก้ไขข้อมูลการจอง",
+      JSON.stringify(req.body[0]),
+      "success",
+      action[0].value,
+    );
+    return sendResponse(
+      res,
+      "success",
+      "0",
+      "บันทึกข้อมูลการแก้ไขการจองสำเร็จ",
+      booking_code
+    );
+  } catch (err) {
+    console.error(err);
+    const lic_code = req.header("lic_code");
+    const action = req.body?.[0]?.action;
+    if (lic_code && action) {
+      await xglobal.action_logs(
+        lic_code,
+        action[0].id,
+        "แก้ไขข้อมูลการจอง",
+        JSON.stringify(req.body[0]),
+        "เกิดข้อผิดพลาดภายในระบบ: " + err.message,
+        action[0].value,
+      );
+    }
     return sendResponse(res, "error", "-4", "เกิดข้อผิดพลาดภายในระบบ");
   }
 };
