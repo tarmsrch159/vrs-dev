@@ -65,7 +65,13 @@ exports.getBookingInformation = async (req, res, next) => {
                 booking.booking_status,
                 usr_agg.booking_users_list as booking_users,
                 stop_agg.booking_stops_list as booking_stops,
-                tbl_u.booking_users as user_reserve
+                tbl_u.booking_users as user_reserve,
+                brand.brand_name,
+                model.model_name,
+                case 
+                  when booking.brand_code IS NULL OR booking.brand_code = 'Do not have brand' OR booking.model_code IS NULL OR booking.model_code = 'Do not have model' THEN ''
+                  else brand.brand_name || ' ' || model.model_name
+                end as vehicle_name
             FROM tbl_booking booking
             LEFT JOIN tbl_vehicle vehicle ON booking.vehicle_code = vehicle.vehicle_code        
             LEFT JOIN tbl_driver driver ON booking.driver_code = driver.driver_code
@@ -109,7 +115,8 @@ exports.getBookingInformation = async (req, res, next) => {
                 LEFT JOIN tbl_station ON tbl_booking_stop.station_id = tbl_station.station_id
                 GROUP BY tbl_booking_stop.booking_code
             ) stop_agg ON stop_agg.booking_code = booking.booking_code
-            
+            left join tbl_vehicle_brand brand on brand.brand_code = booking.brand_code
+            left join tbl_vehicle_model model on model.model_code = booking.model_code
             ${whereClause}
             ORDER BY booking.ist_dt DESC 
             OFFSET (${offset} * ${page_limit}) LIMIT ${page_limit};
@@ -217,7 +224,7 @@ exports.addBookingInformation = async (req, res, next) => {
       );
     }
 
-    const {
+    let {
       vehicle_code,
       driver_code,
       origin_datetime,
@@ -230,8 +237,14 @@ exports.addBookingInformation = async (req, res, next) => {
       time_spent,
       booking_remark,
       reserve_user,
+      brand_code,
+      model_code,
     } = booking_data;
 
+    if (!brand_code || !model_code || brand_code == '""' || model_code == '""' || brand_code == 'null' || model_code == 'null') {
+      brand_code = 'Do not have brand';
+      model_code = 'Do not have model';
+    }
 
     // if (booking_stops.length > 0) {
     //   const origin_stop = booking_stops.find(
@@ -259,9 +272,9 @@ exports.addBookingInformation = async (req, res, next) => {
                 (
                     booking_code, vehicle_code, driver_code, origin_id, dest_id, 
                     origin_datetime, destination_datetime, trip_purpose, ist_dt, 
-                    booking_flag, booking_status, user_code, travel_type_code, time_spent, booking_remark
+                    booking_flag, booking_status, user_code, travel_type_code, time_spent, booking_remark, brand_code, model_code
                 ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);
             `;
         const bookingParams = [
           booking_code,
@@ -278,7 +291,9 @@ exports.addBookingInformation = async (req, res, next) => {
           user_code,
           travel_type_code,
           time_spent,
-          booking_remark
+          booking_remark,
+          brand_code,
+          model_code,
         ];
 
         const resBooking = await pgConn.executeWithClient(
@@ -527,7 +542,7 @@ exports.setBookingInformation = async (req, res, next) => {
   try {
     const lic_code = req.header("lic_code");
     const { booking_code } = req.query || {};
-    const {
+    let {
       vehicle_code,
       driver_code,
       origin_datetime,
@@ -539,6 +554,8 @@ exports.setBookingInformation = async (req, res, next) => {
       origin_id,
       time_spent,
       booking_remark,
+      brand_code,
+      model_code,
       action
     } = req.body[0] || {};
 
@@ -581,6 +598,8 @@ exports.setBookingInformation = async (req, res, next) => {
         const t_type_code = travel_type_code !== undefined ? travel_type_code : currentBooking.travel_type_code;
         const t_spent = time_spent !== undefined ? time_spent : currentBooking.time_spent;
         const b_remark = booking_remark !== undefined ? booking_remark : currentBooking.booking_remark;
+        const b_brand_code = brand_code !== undefined ? brand_code : currentBooking.brand_code;
+        const b_model_code = model_code !== undefined ? model_code : currentBooking.model_code;
 
         // แก้ไขข้อมูลการจองใน tbl_booking
         const updateScript = `
@@ -597,8 +616,10 @@ exports.setBookingInformation = async (req, res, next) => {
                 travel_type_code = $9, 
                 time_spent = $10, 
                 booking_remark = $11, 
-                mdf_dt = $12::timestamp
-            WHERE booking_code = $13;
+                brand_code = $12, 
+                model_code = $13, 
+                mdf_dt = $14::timestamp
+            WHERE booking_code = $15;
         `;
         const updateParams = [
           v_code,
@@ -612,6 +633,8 @@ exports.setBookingInformation = async (req, res, next) => {
           t_type_code,
           t_spent,
           b_remark,
+          b_brand_code,
+          b_model_code,
           now,
           booking_code
         ];
