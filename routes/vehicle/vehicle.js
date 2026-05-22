@@ -16,7 +16,7 @@ exports.getVehicleInformation = async (req, res, next) => {
 
         let lic_code = req.header('lic_code');
         // ======== รับพารามิเตอร์ ========
-        let { vehicle_code, vehicle_name, veh_type_code, veh_group_code, seat_capacity,
+        let { vehicle_code, vehicle_name, veh_type_code, veh_group_code, seat_capacity, blackbox_id,
             action, page_index, page_limit } = req.body[0] || {};
 
         // ======== กำหนดค่าเริ่มต้น ========
@@ -27,6 +27,7 @@ exports.getVehicleInformation = async (req, res, next) => {
         veh_type_code = veh_type_code === undefined ? 'ALL' : veh_type_code;
         veh_group_code = veh_group_code === undefined ? 'ALL' : veh_group_code;
         seat_capacity = seat_capacity === undefined ? 'ALL' : seat_capacity;
+        blackbox_id = blackbox_id === undefined ? 'ALL' : blackbox_id;
 
         // ======== ตรวจสอบพารามิเตอร์ที่จำเป็น ========
         let missing = [];
@@ -75,6 +76,10 @@ exports.getVehicleInformation = async (req, res, next) => {
 
         if (seat_capacity.toString().toUpperCase() !== 'ALL') {
             conditions.push(`tbl_vehicle.seat_capacity = ${seat_capacity}`); // int4
+        }
+
+        if (blackbox_id.toString().toUpperCase() !== 'ALL') {
+            conditions.push(`tbl_vehicle.blackbox_id = '${blackbox_id}'`);
         }
 
         let whereClause = "WHERE " + conditions.join(" AND ");
@@ -320,7 +325,7 @@ exports.setVehicleInformation = async (req, res, next) => {
         const lic_code = req.header('lic_code');
         const { vehicle_code } = req.query;
         const {
-            vehicle_name, veh_type_code, pic_front, pic_back, pic_left,
+            vehicle_name, veh_type_code, pic_front, pic_back, pic_left, blackbox_id,
             pic_right, pic_interior, vehicle_color, submodel_code, mode_code,
             seat_capacity, vehicle_license, vehicle_drivers, vehicle_users, action
         } = req.body[0] || {};
@@ -345,14 +350,14 @@ exports.setVehicleInformation = async (req, res, next) => {
                     vehicle_name = $1, veh_type_code = $2, pic_front = $3, pic_back = $4,
                     pic_left = $5, pic_right = $6, pic_interior = $7, vehicle_color = $8,
                     submodel_code = $9, mode_code = $10, seat_capacity = $11, 
-                    vehicle_license = $12, mdf_dt = $13 
-                WHERE vehicle_code = $14;
+                    vehicle_license = $12, mdf_dt = $13, blackbox_id = $14
+                WHERE vehicle_code = $15;
             `;
             const paramsVehicle = [
                 vehicle_name, veh_type_code, pic_front || null, pic_back || null,
                 pic_left || null, pic_right || null, pic_interior || null, vehicle_color,
                 submodel_code || null, mode_code || null, seat_capacity || 0,
-                vehicle_license, moment().format('YYYY-MM-DD HH:mm:ss'), vehicle_code
+                vehicle_license, moment().format('YYYY-MM-DD HH:mm:ss'), blackbox_id, vehicle_code
             ];
 
             const resVehicle = await pgConn.executeWithClient(client, scriptVehicle, paramsVehicle);
@@ -400,7 +405,7 @@ exports.addVehicleInformation = async (req, res, next) => {
     try {
         const lic_code = req.header('lic_code');
         const {
-            vehicle_name, veh_type_code, veh_group_code, pic_front, pic_back, pic_left,
+            vehicle_name, veh_type_code, veh_group_code, pic_front, pic_back, pic_left, blackbox_id,
             pic_right, pic_interior, vehicle_color, submodel_code, mode_code,
             seat_capacity, vehicle_license, vehicle_drivers, vehicle_users, action
         } = req.body[0] || {};
@@ -414,7 +419,7 @@ exports.addVehicleInformation = async (req, res, next) => {
         if (vehicle_drivers === undefined) missing.push('vehicle_drivers');
         if (vehicle_users === undefined) missing.push('vehicle_users');
         if (action === undefined) missing.push('action');
-
+        if (blackbox_id === undefined) missing.push('blackbox_id');
         if (missing.length > 0) {
             return sendResponse(res, 'error', '-1', `ไม่สามารถบันทึกข้อมูล, เนื่องจากข้อมูลพารามิเตอร์ไม่ถูกต้อง (ขาด: ${missing.join(', ')})`);
         }
@@ -438,13 +443,13 @@ exports.addVehicleInformation = async (req, res, next) => {
                 INSERT INTO tbl_vehicle (
                     vehicle_code, vehicle_name, veh_type_code, veh_group_code, pic_front, pic_back,
                     pic_left, pic_right, pic_interior, vehicle_color, submodel_code, mode_code,
-                    seat_capacity, vehicle_license, ist_dt, vehicle_flag
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 1);
+                    seat_capacity, vehicle_license, ist_dt, vehicle_flag, blackbox_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 1, $16);
             `;
             const paramsVehicle = [
                 vehicle_code, vehicle_name, veh_type_code, veh_group_code, pic_front, pic_back,
                 pic_left, pic_right, pic_interior, vehicle_color, submodel_code, mode_code,
-                seat_capacity, vehicle_license, moment().format('YYYY-MM-DD HH:mm:ss')
+                seat_capacity, vehicle_license, moment().format('YYYY-MM-DD HH:mm:ss'), blackbox_id
             ];
 
             const resVehicle = await pgConn.executeWithClient(client, scriptVehicle, paramsVehicle);
